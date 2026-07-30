@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer
+from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,6 +22,6 @@ class SafetyScore(Base):
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     risk_factors: Mapped[dict | None] = mapped_column(JSONB)
-    computed_at: Mapped[datetime] = mapped_column(nullable=False, server_default="now()")
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
 
     deployment: Mapped[Deployment] = relationship()
