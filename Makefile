@@ -1,4 +1,4 @@
-.PHONY: cluster-up cluster-down cluster-status up down logs db-shell
+.PHONY: cluster-up cluster-down cluster-status up down logs db-shell migrate
 
 # --- Kind Cluster ---
 cluster-up:
@@ -23,3 +23,7 @@ logs:
 
 db-shell:
 	docker compose -f deploy/docker-compose.yml exec postgres psql -U deploylens -d deploylens
+
+# --- Migrations ---
+migrate:
+	python services/ingest/migrations/run.py --url "postgresql://deploylens:deploylens@localhost:5432/deploylens"
