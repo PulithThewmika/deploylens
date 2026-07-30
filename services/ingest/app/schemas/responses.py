@@ -1,0 +1,101 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+
+class ServiceResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    repo: str | None = None
+    argocd_app: str | None = None
+    namespace: str
+    created_at: datetime
+
+
+class DeploymentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    commit_sha: str | None = None
+    branch: str | None = None
+    author: str | None = None
+    status: str
+    image_tag: str | None = None
+    started_at: datetime
+    finished_at: datetime | None = None
+
+
+class HealthAssessmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    deployment_id: int
+    score: int
+    verdict: str
+    error_rate_base: float | None = None
+    error_rate_post: float | None = None
+    latency_p99_base_ms: float | None = None
+    latency_p99_post_ms: float | None = None
+    restarts_base: float | None = None
+    restarts_post: float | None = None
+    details: dict | None = None
+    assessed_at: datetime
+
+
+class DeploymentDetailResponse(DeploymentResponse):
+    commit_at: datetime | None = None
+    build_status: str | None = None
+    build_duration_s: float | None = None
+    sync_status: str | None = None
+    workflow_run_id: int | None = None
+    argocd_revision: str | None = None
+    created_at: datetime
+    health_assessment: HealthAssessmentResponse | None = None
+    service: ServiceResponse | None = None
+
+
+class AlertResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    deployment_id: int
+    service_id: int
+    severity: str
+    title: str
+    description: str | None = None
+    fired_at: datetime
+    resolved_at: datetime | None = None
+    alertmanager_id: str | None = None
+
+
+class DORADeployFrequency(BaseModel):
+    deploy_date: str
+    service_name: str
+    deploy_count: int
+
+
+class DORALeadTime(BaseModel):
+    service_name: str
+    avg_lead_time_seconds: float
+
+
+class DORAChangeFailureRate(BaseModel):
+    service_name: str
+    total_deploys: int
+    failed_deploys: int
+    failure_rate: float
+
+
+class DOAMTTR(BaseModel):
+    service_name: str
+    avg_mttr_seconds: float
+
+
+class DORAResponse(BaseModel):
+    deploy_frequency: list[DORADeployFrequency] = []
+    lead_time: list[DORALeadTime] = []
+    change_failure_rate: list[DORAChangeFailureRate] = []
+    mttr: list[DOAMTTR] = []
