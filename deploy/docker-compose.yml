@@ -1,0 +1,68 @@
+services:
+  # ── PostgreSQL 16 ──────────────────────────────────────────────
+  # The central database — every DeployLens component reads/writes here.
+  # Creates the "deploylens" database automatically on first start.
+  postgres:
+    image: postgres:16
+    container_name: deploylens-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: deploylens
+      POSTGRES_USER: deploylens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deploylens}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deploylens -d deploylens"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Ingest Service (FastAPI) ───────────────────────────────────
+  # Receives webhooks from GitHub Actions and ArgoCD, correlates
+  # them into deployment records, and serves the REST API.
+  # Build context points to services/ingest/ — Dockerfile lives there.
+  ingest:
+    build:
+      context: ../services/ingest
+      dockerfile: Dockerfile
+    container_name: deploylens-ingest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Grafana ────────────────────────────────────────────────────
+  # Visualization layer — provisioned datasources (Prometheus, Loki,
+  # PostgreSQL) and dashboards load automatically from mounted YAML.
+  # Embedding enabled for the React shell iframe integration.
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: deploylens-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-deploylens}
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  grafana_data:

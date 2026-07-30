@@ -1,0 +1,4 @@
+# Grafana provisioned datasources
+# Placeholder — full configuration added in E5-T1
+apiVersion: 1
+datasources: []
