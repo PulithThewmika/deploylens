@@ -1,0 +1,13 @@
+# Kind cluster configuration for DeployLens
+# Creates a single control-plane node with port mappings
+# so services inside the cluster are reachable from localhost.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # NodePort 30080 inside cluster → port 8080 on your laptop
+      # Used later for ingress access to sample app
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
