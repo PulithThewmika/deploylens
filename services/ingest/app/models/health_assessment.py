@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,6 @@ class HealthAssessment(Base):
     restarts_base: Mapped[float | None] = mapped_column(Float)
     restarts_post: Mapped[float | None] = mapped_column(Float)
     details: Mapped[dict | None] = mapped_column(JSONB)
-    assessed_at: Mapped[datetime] = mapped_column(nullable=False, server_default="now()")
+    assessed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
 
     deployment: Mapped[Deployment] = relationship(back_populates="health_assessment")

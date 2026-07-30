@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -22,8 +22,8 @@ class Alert(Base):
     severity: Mapped[str] = mapped_column(String, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
-    fired_at: Mapped[datetime] = mapped_column(nullable=False, server_default="now()")
-    resolved_at: Mapped[datetime | None] = mapped_column()
+    fired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     alertmanager_id: Mapped[str | None] = mapped_column(Text)
 
     deployment: Mapped[Deployment] = relationship(back_populates="alerts")

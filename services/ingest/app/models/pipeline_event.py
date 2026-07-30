@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import String, Text
+from sqlalchemy import DateTime, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,4 +14,4 @@ class PipelineEvent(Base):
     source: Mapped[str] = mapped_column(String, nullable=False)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)
     payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    received_at: Mapped[datetime] = mapped_column(nullable=False, server_default="now()")
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
