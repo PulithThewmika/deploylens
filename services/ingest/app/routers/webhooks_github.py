@@ -1,55 +1,25 @@
 import json
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import case, select
+from sqlalchemy import case
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import verify_github_signature
+from ..correlation.engine import (
+    extract_image_tag,
+    parse_iso_timestamp,
+    resolve_service,
+    utcnow,
+)
 from ..db import get_session
 from ..models.deployment import Deployment
 from ..models.pipeline_event import PipelineEvent
-from ..models.service import Service
 
 logger = logging.getLogger("deploylens.webhooks.github")
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-
-
-async def resolve_service(session: AsyncSession, repo_full_name: str) -> int:
-    result = await session.execute(
-        select(Service.id).where(Service.repo == repo_full_name)
-    )
-    service_id = result.scalar_one_or_none()
-    if service_id is not None:
-        return service_id
-
-    short_name = repo_full_name.split("/")[-1]
-    service = Service(name=short_name, repo=repo_full_name)
-    session.add(service)
-    await session.flush()
-    logger.info("Auto-registered service '%s' from repo '%s' (id=%d)", short_name, repo_full_name, service.id)
-    return service.id
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def parse_iso_timestamp(ts: str | None) -> datetime | None:
-    if not ts:
-        return None
-    return datetime.fromisoformat(ts.replace("Z", "+00:00"))
-
-
-def extract_image_tag(workflow_run: dict) -> str | None:
-    name = workflow_run.get("name", "")
-    head_sha = workflow_run.get("head_sha", "")
-    if head_sha:
-        return head_sha[:7]
-    return None
 
 
 @router.post("/github")
@@ -83,7 +53,7 @@ async def github_webhook(
         await session.commit()
         return {"status": "ignored", "reason": "missing repository.full_name"}
 
-    service_id = await resolve_service(session, repo_full_name)
+    service_id = await resolve_service(session, repo=repo_full_name)
     workflow_run_id = workflow_run.get("id")
     commit_sha = workflow_run.get("head_sha")
     branch = workflow_run.get("head_branch")
@@ -93,7 +63,7 @@ async def github_webhook(
         if workflow_run.get("head_commit")
         else None
     )
-    image_tag = extract_image_tag(workflow_run)
+    image_tag = extract_image_tag(commit_sha)
 
     if action == "requested":
         stmt = pg_insert(Deployment).values(
