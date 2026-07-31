@@ -1,74 +1,23 @@
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..auth import verify_argocd_token
+from ..correlation.engine import (
+    extract_image_tag,
+    find_matching_deployment,
+    resolve_service,
+    utcnow,
+)
 from ..db import get_session
 from ..models.deployment import Deployment
 from ..models.pipeline_event import PipelineEvent
-from ..models.service import Service
 
 logger = logging.getLogger("deploylens.webhooks.argocd")
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-async def resolve_service_by_app(session: AsyncSession, app_name: str) -> int:
-    result = await session.execute(
-        select(Service).where(Service.argocd_app == app_name)
-    )
-    service = result.scalar_one_or_none()
-    if service is not None:
-        return service.id
-
-    result = await session.execute(
-        select(Service).where(Service.name == app_name)
-    )
-    service = result.scalar_one_or_none()
-    if service is not None:
-        service.argocd_app = app_name
-        await session.flush()
-        logger.info("Linked ArgoCD app '%s' to existing service (id=%d)", app_name, service.id)
-        return service.id
-
-    service = Service(name=app_name, argocd_app=app_name)
-    session.add(service)
-    await session.flush()
-    logger.info("Auto-registered service '%s' from ArgoCD app (id=%d)", app_name, service.id)
-    return service.id
-
-
-async def find_deployment_by_sha(
-    session: AsyncSession, service_id: int, revision: str
-) -> Deployment | None:
-    result = await session.execute(
-        select(Deployment)
-        .where(Deployment.service_id == service_id, Deployment.commit_sha == revision)
-        .order_by(Deployment.created_at.desc())
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
-async def find_deployment_by_image_tag(
-    session: AsyncSession, service_id: int, revision: str
-) -> Deployment | None:
-    short_rev = revision[:7] if len(revision) >= 7 else revision
-    result = await session.execute(
-        select(Deployment)
-        .where(Deployment.service_id == service_id, Deployment.image_tag == short_rev)
-        .order_by(Deployment.created_at.desc())
-        .limit(1)
-    )
-    return result.scalar_one_or_none()
 
 
 @router.post("/argocd")
@@ -84,7 +33,6 @@ async def argocd_webhook(
     sync_status_obj = app_data.get("status", {}).get("sync", {})
     revision = sync_status_obj.get("revision", "")
     operation_state = app_data.get("status", {}).get("operationState", {})
-    health_status = app_data.get("status", {}).get("health", {}).get("status", "")
     event_type = payload.get("type", "unknown")
 
     await session.execute(
@@ -99,7 +47,7 @@ async def argocd_webhook(
         await session.commit()
         return {"status": "ignored", "reason": "missing app.metadata.name"}
 
-    service_id = await resolve_service_by_app(session, app_name)
+    service_id = await resolve_service(session, argocd_app=app_name)
 
     if not revision:
         revision = operation_state.get("syncResult", {}).get("revision", "")
@@ -108,11 +56,10 @@ async def argocd_webhook(
         logger.info("No revision found in ArgoCD event for app '%s', skipping", app_name)
         return {"status": "ignored", "reason": "no revision in payload"}
 
-    existing = await find_deployment_by_sha(session, service_id, revision)
-    correlation_method = "commit_sha"
-    if existing is None:
-        existing = await find_deployment_by_image_tag(session, service_id, revision)
-        correlation_method = "image_tag"
+    image_tag = extract_image_tag(revision)
+    existing, correlation_method = await find_matching_deployment(
+        session, service_id, commit_sha=revision, image_tag=image_tag,
+    )
 
     if event_type == "on-sync-running":
         if existing:
@@ -132,7 +79,7 @@ async def argocd_webhook(
             status="syncing",
             sync_status="OutOfSync",
             argocd_revision=revision,
-            image_tag=revision[:7] if len(revision) >= 7 else revision,
+            image_tag=image_tag,
             started_at=utcnow(),
         )
         stmt = stmt.on_conflict_do_update(
@@ -170,7 +117,7 @@ async def argocd_webhook(
             status="deployed",
             sync_status="Synced",
             argocd_revision=revision,
-            image_tag=revision[:7] if len(revision) >= 7 else revision,
+            image_tag=image_tag,
             started_at=utcnow(),
             finished_at=utcnow(),
         )
@@ -210,7 +157,7 @@ async def argocd_webhook(
             status="sync_failed",
             sync_status="Failed",
             argocd_revision=revision,
-            image_tag=revision[:7] if len(revision) >= 7 else revision,
+            image_tag=image_tag,
             started_at=utcnow(),
             finished_at=utcnow(),
         )
