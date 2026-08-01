@@ -1,0 +1,69 @@
+# Helm values for Loki in the DeployLens Kind cluster.
+# Install:
+#   helm install loki grafana/loki \
+#     -n monitoring \
+#     -f deploy/helm-values/loki.yaml
+#
+# SingleBinary mode — lightweight, no object storage required.
+# Auth disabled — DeployLens services query Loki directly.
+
+# ── Deployment mode ─────────────────────────────────────────────────
+deploymentMode: SingleBinary
+
+# ── Loki config ─────────────────────────────────────────────────────
+loki:
+  auth_enabled: false
+
+  # Use filesystem storage (no S3/GCS needed for dev)
+  storage:
+    type: filesystem
+
+  # Schema config required for TSDB index
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+
+  # SingleBinary with one replica — must override replication factor
+  commonConfig:
+    replication_factor: 1
+
+  # Limits — relaxed for dev
+  limits_config:
+    ingestion_burst_size_mb: 20
+    ingestion_rate_mb: 10
+
+# ── SingleBinary settings ───────────────────────────────────────────
+singleBinary:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 2Gi
+
+# ── Disable components not needed in SingleBinary mode ──────────────
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+gateway:
+  enabled: false
+
+# ── Disable memcached caches (overkill for dev) ─────────────────────
+resultsCache:
+  enabled: false
+chunksCache:
+  enabled: false
