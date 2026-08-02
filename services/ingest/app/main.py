@@ -3,7 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import Counter, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator.metrics import Info
 from sqlalchemy import text
 
 from .db import async_session, engine
@@ -35,11 +37,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Prometheus metrics — namespace/subsystem prefix all metric names as deploylens_ingest_*
-Instrumentator(
-    should_group_status_codes=False,
+# Prometheus metrics with required service label (CLAUDE.md Critical Decision #2)
+_requests_counter = Counter(
+    "deploylens_ingest_http_requests_total",
+    "Total HTTP requests",
+    ["service", "method", "handler", "status"],
+)
+_duration_histogram = Histogram(
+    "deploylens_ingest_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["service", "method", "handler", "status"],
+)
+
+
+def _count_requests(info: Info) -> None:
+    _requests_counter.labels(
+        service="ingest",
+        method=info.request.method,
+        handler=info.modified_handler,
+        status=info.modified_status,
+    ).inc()
+
+
+def _observe_duration(info: Info) -> None:
+    _duration_histogram.labels(
+        service="ingest",
+        method=info.request.method,
+        handler=info.modified_handler,
+        status=info.modified_status,
+    ).observe(info.modified_duration)
+
+
+_instrumentator = Instrumentator(
+    should_instrument_requests_inprogress=False,
     excluded_handlers=["/healthz", "/metrics"],
-).instrument(app, metric_namespace="deploylens", metric_subsystem="ingest").expose(app)
+)
+_instrumentator.add(_count_requests)
+_instrumentator.add(_observe_duration)
+_instrumentator.instrument(app).expose(app)
 
 # Routers
 app.include_router(webhooks_github.router)
