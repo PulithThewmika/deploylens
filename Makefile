@@ -1,4 +1,21 @@
-.PHONY: cluster-up cluster-down cluster-status up down logs db-shell migrate tunnel webhook-update
+.PHONY: help cluster-up cluster-down cluster-status up down logs db-shell migrate \
+        forwards forwards-stop argocd-forward tunnel webhook-update
+
+help:
+	@echo "DeployLens dev workflow targets:"
+	@echo "  cluster-up       Create the Kind cluster from deploy/kind-config.yaml"
+	@echo "  cluster-down     Delete the Kind cluster"
+	@echo "  cluster-status   Show cluster info and node list"
+	@echo "  up               Start docker-compose stack (postgres, ingest, grafana)"
+	@echo "  down             Stop docker-compose stack"
+	@echo "  logs             Tail docker-compose logs"
+	@echo "  db-shell         Open psql into the deploylens database"
+	@echo "  migrate          Run SQL migrations against local Postgres"
+	@echo "  forwards         Start port-forwards for Prometheus, Loki, Alertmanager"
+	@echo "  forwards-stop    Stop tracked port-forward processes"
+	@echo "  argocd-forward   Port-forward the ArgoCD UI to localhost:8443"
+	@echo "  tunnel           Start ngrok tunnel on port 8000 for GitHub webhooks"
+	@echo "  webhook-update   Patch the GitHub webhook with the current ngrok URL"
 
 # --- Kind Cluster ---
 cluster-up:
@@ -27,6 +44,34 @@ db-shell:
 # --- Migrations ---
 migrate:
 	python services/ingest/migrations/run.py --url "postgresql://deploylens:deploylens@localhost:5432/deploylens"
+
+# --- Cluster Port-Forwards (background, PIDs tracked in .pids) ---
+forwards:
+	@mkdir -p .pids
+	@echo "Starting port-forwards..."
+	@kubectl -n monitoring port-forward svc/kps-kube-prometheus-stack-prometheus 9090:9090 > .pids/prometheus.log 2>&1 & echo $$! > .pids/prometheus.pid
+	@kubectl -n monitoring port-forward svc/loki 3100:3100 > .pids/loki.log 2>&1 & echo $$! > .pids/loki.pid
+	@kubectl -n monitoring port-forward svc/kps-kube-prometheus-stack-alertmanager 9093:9093 > .pids/alertmanager.log 2>&1 & echo $$! > .pids/alertmanager.pid
+	@sleep 2
+	@echo "  Prometheus   -> http://localhost:9090   (pid $$(cat .pids/prometheus.pid))"
+	@echo "  Loki         -> http://localhost:3100   (pid $$(cat .pids/loki.pid))"
+	@echo "  Alertmanager -> http://localhost:9093   (pid $$(cat .pids/alertmanager.pid))"
+
+forwards-stop:
+	@if [ -d .pids ]; then \
+		for pidfile in .pids/*.pid; do \
+			if [ -f "$$pidfile" ]; then \
+				pid=$$(cat $$pidfile); \
+				kill $$pid 2>/dev/null && echo "Stopped $$(basename $$pidfile .pid) (pid $$pid)" || echo "Not running: $$(basename $$pidfile .pid)"; \
+				rm -f $$pidfile; \
+			fi; \
+		done; \
+	else \
+		echo "No .pids directory — nothing to stop"; \
+	fi
+
+argocd-forward:
+	kubectl -n argocd port-forward svc/argocd-server 8443:443
 
 # --- Tunnel (GitHub webhook delivery) ---
 tunnel:
