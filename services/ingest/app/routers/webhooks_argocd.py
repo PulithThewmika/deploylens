@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..auth import verify_argocd_token
 from ..correlation.engine import (
     extract_image_tag,
+    extract_image_tag_from_images,
     find_matching_deployment,
     resolve_service,
     utcnow,
@@ -56,7 +57,13 @@ async def argocd_webhook(
         logger.info("No revision found in ArgoCD event for app '%s', skipping", app_name)
         return {"status": "ignored", "reason": "no revision in payload"}
 
-    image_tag = extract_image_tag(revision)
+    images_str = app_data.get("status", {}).get("summary", {}).get("images")
+    image_tag = extract_image_tag_from_images(images_str)
+    if image_tag:
+        logger.info("Extracted image_tag '%s' from deployed images for app '%s'", image_tag, app_name)
+    else:
+        image_tag = extract_image_tag(revision)
+        logger.info("No images in payload for app '%s', falling back to revision-derived tag '%s'", app_name, image_tag)
     existing, correlation_method = await find_matching_deployment(
         session, service_id, commit_sha=revision, image_tag=image_tag,
     )
