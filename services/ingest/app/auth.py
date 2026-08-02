@@ -25,7 +25,9 @@ async def verify_github_signature(request: Request):
     return body
 
 
-async def verify_argocd_token(authorization: str = Header(...)):
+async def verify_argocd_token(authorization: str | None = Header(default=None)):
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
     expected = f"Bearer {ARGOCD_WEBHOOK_TOKEN}"
     if not hmac.compare_digest(authorization, expected):
         raise HTTPException(status_code=401, detail="Invalid bearer token")
