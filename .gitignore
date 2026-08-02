@@ -147,6 +147,9 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# DeployLens local state
+.pids/
+
 # Environments
 .env
 .envrc

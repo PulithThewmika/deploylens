@@ -1,0 +1,12 @@
+# Grafana dashboard provisioning provider
+# Tells Grafana to load JSON dashboards from this directory
+apiVersion: 1
+providers:
+  - name: deploylens
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false

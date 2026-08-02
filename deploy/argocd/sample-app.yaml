@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-app
+  namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-running.deploylens: ""
+    notifications.argoproj.io/subscribe.on-sync-succeeded.deploylens: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.deploylens: ""
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/PulithThewmika/deploylens.git
+    targetRevision: dev
+    path: sample-app/deploy
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: deploylens
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

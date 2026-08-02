@@ -1,0 +1,92 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "enable": true,
+        "iconColor": "grey",
+        "target": {
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status = 'deployed'\n  AND ('$service' = '*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\nORDER BY d.finished_at DESC",
+          "format": "table"
+        },
+        "mappings": {
+          "text": { "source": "field", "value": "text" },
+          "title": { "source": "field", "value": "title" },
+          "tags": { "source": "field", "value": "tags" },
+          "time": { "source": "field", "value": "time" }
+        }
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Request rate by service",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deploylens-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$service\"}[2m]))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["deploylens", "reference"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "query": "SELECT name FROM services ORDER BY name",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": "*",
+        "current": { "text": "All", "value": "*" }
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Deployment Annotations — Reference",
+  "uid": "deployment-annotations-demo",
+  "version": 1,
+  "weekStart": ""
+}

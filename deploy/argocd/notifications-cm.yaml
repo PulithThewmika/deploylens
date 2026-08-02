@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  service.webhook.deploylens: |
+    url: http://host.docker.internal:8000/webhooks/argocd
+    headers:
+      - name: Authorization
+        value: Bearer $deploylens-token
+      - name: Content-Type
+        value: application/json
+
+  template.deploylens-on-sync-running: |
+    webhook:
+      deploylens:
+        method: POST
+        body: |
+          {
+            "type": "on-sync-running",
+            "app": {
+              "metadata": {
+                "name": "{{.app.metadata.name}}"
+              },
+              "status": {
+                "sync": {
+                  "status": "{{.app.status.sync.status}}",
+                  "revision": "{{.app.status.sync.revision}}"
+                },
+                "health": {
+                  "status": "{{.app.status.health.status}}"
+                },
+                "operationState": {
+                  "phase": "{{.app.status.operationState.phase}}",
+                  "message": "{{.app.status.operationState.message}}",
+                  "syncResult": {
+                    "revision": "{{.app.status.operationState.syncResult.revision}}"
+                  }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
+                }
+              }
+            }
+          }
+
+  template.deploylens-on-sync-succeeded: |
+    webhook:
+      deploylens:
+        method: POST
+        body: |
+          {
+            "type": "on-sync-succeeded",
+            "app": {
+              "metadata": {
+                "name": "{{.app.metadata.name}}"
+              },
+              "status": {
+                "sync": {
+                  "status": "{{.app.status.sync.status}}",
+                  "revision": "{{.app.status.sync.revision}}"
+                },
+                "health": {
+                  "status": "{{.app.status.health.status}}"
+                },
+                "operationState": {
+                  "phase": "{{.app.status.operationState.phase}}",
+                  "message": "{{.app.status.operationState.message}}",
+                  "syncResult": {
+                    "revision": "{{.app.status.operationState.syncResult.revision}}"
+                  }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
+                }
+              }
+            }
+          }
+
+  template.deploylens-on-sync-failed: |
+    webhook:
+      deploylens:
+        method: POST
+        body: |
+          {
+            "type": "on-sync-failed",
+            "app": {
+              "metadata": {
+                "name": "{{.app.metadata.name}}"
+              },
+              "status": {
+                "sync": {
+                  "status": "{{.app.status.sync.status}}",
+                  "revision": "{{.app.status.sync.revision}}"
+                },
+                "health": {
+                  "status": "{{.app.status.health.status}}"
+                },
+                "operationState": {
+                  "phase": "{{.app.status.operationState.phase}}",
+                  "message": "{{.app.status.operationState.message}}",
+                  "syncResult": {
+                    "revision": "{{.app.status.operationState.syncResult.revision}}"
+                  }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
+                }
+              }
+            }
+          }
+
+  trigger.on-sync-running: |
+    - when: app.status.operationState.phase in ['Running']
+      send: [deploylens-on-sync-running]
+
+  trigger.on-sync-succeeded: |
+    - when: app.status.operationState.phase in ['Succeeded']
+      send: [deploylens-on-sync-succeeded]
+
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Failed', 'Error']
+      send: [deploylens-on-sync-failed]

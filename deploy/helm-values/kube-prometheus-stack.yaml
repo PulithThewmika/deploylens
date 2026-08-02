@@ -1,0 +1,67 @@
+# Helm values for kube-prometheus-stack in the DeployLens Kind cluster.
+# Install:
+#   helm install kps prometheus-community/kube-prometheus-stack \
+#     -n monitoring --create-namespace \
+#     -f deploy/helm-values/kube-prometheus-stack.yaml
+#
+# Grafana is disabled — DeployLens runs its own provisioned Grafana
+# via docker-compose (deploy/docker-compose.yml), which connects to
+# this Prometheus through a port-forward.
+
+# ── Grafana (disabled — we provision our own) ────────────────────────
+grafana:
+  enabled: false
+
+# ── Prometheus ───────────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    # Dev retention — keep it small for a Kind cluster
+    retention: 7d
+
+    # Resource limits sized for a single-node Kind cluster
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+
+    # Pick up ServiceMonitors from ALL namespaces regardless of labels.
+    # Without these false flags, only ServiceMonitors with the Helm
+    # release label are discovered — the sample app's ServiceMonitors
+    # (deployed by ArgoCD, not Helm) would be silently ignored.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+
+# ── Alertmanager ─────────────────────────────────────────────────────
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+
+# ── kube-state-metrics (Kubernetes object metrics) ───────────────────
+kubeStateMetrics:
+  enabled: true
+
+# ── node-exporter (host-level metrics) ───────────────────────────────
+nodeExporter:
+  enabled: true
+
+# ── Kind-specific: control-plane components are not scrapeable ───────
+# Kind runs etcd/scheduler/controller-manager with bind addresses that
+# are unreachable from pods; disable their scrape targets to avoid
+# permanently-down targets cluttering the targets page.
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
