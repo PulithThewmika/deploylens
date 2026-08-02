@@ -1,4 +1,38 @@
-# Grafana provisioned datasources
-# Placeholder — full configuration added in E5-T1
 apiVersion: 1
-datasources: []
+
+datasources:
+  # ── Prometheus (metrics from Kind cluster, port-forwarded to host) ──
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://host.docker.internal:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+
+  # ── Loki (logs from Kind cluster, port-forwarded to host) ──────────
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://host.docker.internal:3100
+    editable: false
+    jsonData:
+      maxLines: 1000
+
+  # ── PostgreSQL (deployments, health scores, DORA views) ────────────
+  - name: PostgreSQL
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres:5432
+    user: grafana_ro
+    editable: false
+    jsonData:
+      database: deploylens
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: grafana_readonly
