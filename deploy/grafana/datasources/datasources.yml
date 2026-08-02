@@ -3,6 +3,7 @@ apiVersion: 1
 datasources:
   # ── Prometheus (metrics from Kind cluster, port-forwarded to host) ──
   - name: Prometheus
+    uid: deploylens-prometheus
     type: prometheus
     access: proxy
     url: http://host.docker.internal:9090
@@ -14,6 +15,7 @@ datasources:
 
   # ── Loki (logs from Kind cluster, port-forwarded to host) ──────────
   - name: Loki
+    uid: deploylens-loki
     type: loki
     access: proxy
     url: http://host.docker.internal:3100
@@ -23,6 +25,7 @@ datasources:
 
   # ── PostgreSQL (deployments, health scores, DORA views) ────────────
   - name: PostgreSQL
+    uid: deploylens-postgres
     type: grafana-postgresql-datasource
     access: proxy
     url: postgres:5432
