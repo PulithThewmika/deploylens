@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: sample-app
   namespace: argocd
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-running.deploylens: ""
+    notifications.argoproj.io/subscribe.on-sync-succeeded.deploylens: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.deploylens: ""
 spec:
   project: default
   source:
