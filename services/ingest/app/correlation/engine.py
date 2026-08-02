@@ -27,6 +27,25 @@ def extract_image_tag(head_sha: str | None) -> str | None:
     return head_sha
 
 
+def extract_image_tag_from_images(images_str: str | None) -> str | None:
+    """Extract the short image tag from ArgoCD's summary.images field.
+
+    ArgoCD renders summary.images as a comma-separated string of image
+    references (e.g. "ghcr.io/org/app-frontend:abc1234,ghcr.io/org/app-orders:abc1234").
+    All images in a single sync share the same tag, so we take the first one.
+    Returns None if the string is empty or contains no parseable tag.
+    """
+    if not images_str or not images_str.strip():
+        return None
+    first_image = images_str.split(",")[0].strip().strip("[]")
+    if ":" not in first_image:
+        return None
+    tag = first_image.rsplit(":", 1)[1]
+    if not tag or tag == "latest":
+        return None
+    return tag
+
+
 @dataclass
 class CorrelationResult:
     deployment: Deployment

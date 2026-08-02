@@ -37,6 +37,9 @@ data:
                   "syncResult": {
                     "revision": "{{.app.status.operationState.syncResult.revision}}"
                   }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
                 }
               }
             }
@@ -67,6 +70,9 @@ data:
                   "syncResult": {
                     "revision": "{{.app.status.operationState.syncResult.revision}}"
                   }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
                 }
               }
             }
@@ -97,6 +103,9 @@ data:
                   "syncResult": {
                     "revision": "{{.app.status.operationState.syncResult.revision}}"
                   }
+                },
+                "summary": {
+                  "images": "{{.app.status.summary.images}}"
                 }
               }
             }
