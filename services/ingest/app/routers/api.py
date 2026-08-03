@@ -8,6 +8,7 @@ from ..schemas.responses import (
     LatestDeployInfo,
     HealthSummary,
     DORAMetricsResponse,
+    AlertResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -178,3 +179,56 @@ async def get_dora_metrics(
         period=period,
         service=service,
     )
+
+
+@router.get("/alerts", response_model=list[AlertResponse])
+async def list_alerts(
+    active: bool | None = Query(None, description="Filter active alerts (resolved_at IS NULL)"),
+    service: str | None = Query(None, description="Filter by service name"),
+    session: AsyncSession = Depends(get_session),
+):
+    """List alerts with optional active/service filters."""
+    conditions = []
+    params: dict = {}
+
+    if active is True:
+        conditions.append("a.resolved_at IS NULL")
+    elif active is False:
+        conditions.append("a.resolved_at IS NOT NULL")
+
+    if service:
+        conditions.append("s.name = :service")
+        params["service"] = service
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    result = await session.execute(
+        text(f"""
+            SELECT a.id, a.deployment_id, a.service_id, a.severity,
+                   a.title, a.description, a.fired_at, a.resolved_at,
+                   a.alertmanager_id
+            FROM alerts a
+            JOIN services s ON s.id = a.service_id
+            {where_clause}
+            ORDER BY a.fired_at DESC
+        """),
+        params,
+    )
+    rows = result.fetchall()
+
+    return [
+        AlertResponse(
+            id=row.id,
+            deployment_id=row.deployment_id,
+            service_id=row.service_id,
+            severity=row.severity,
+            title=row.title,
+            description=row.description,
+            fired_at=row.fired_at,
+            resolved_at=row.resolved_at,
+            alertmanager_id=row.alertmanager_id,
+        )
+        for row in rows
+    ]
