@@ -40,6 +40,28 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── Detection Agent ─────────────────────────────────────────────
+  # Autonomous batch processor that scores deployment health every
+  # 60 seconds. No HTTP API — connects to PostgreSQL, Prometheus,
+  # and Alertmanager directly.
+  agent:
+    build:
+      context: ../services/agent
+      dockerfile: Dockerfile
+    container_name: deploylens-agent
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
+      ALERTMANAGER_URL: ${ALERTMANAGER_URL:-http://host.docker.internal:9093}
+      BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
+      OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ── Grafana ────────────────────────────────────────────────────
   # Visualization layer — provisioned datasources (Prometheus, Loki,
   # PostgreSQL) and dashboards load automatically from mounted YAML.
