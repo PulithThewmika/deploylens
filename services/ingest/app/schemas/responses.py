@@ -14,6 +14,33 @@ class ServiceResponse(BaseModel):
     created_at: datetime
 
 
+class LatestDeployInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    commit_sha: str | None = None
+    author: str | None = None
+    status: str
+    finished_at: datetime | None = None
+
+
+class HealthSummary(BaseModel):
+    score: int | None = None
+    verdict: str | None = None
+
+
+class ServiceWithStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    namespace: str
+    repo: str | None = None
+    argocd_app: str | None = None
+    latest_deploy: LatestDeployInfo | None = None
+    health: HealthSummary | None = None
+    active_alert_count: int = 0
+
+
 class DeploymentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -99,3 +126,13 @@ class DORAResponse(BaseModel):
     lead_time: list[DORALeadTime] = []
     change_failure_rate: list[DORAChangeFailureRate] = []
     mttr: list[DOAMTTR] = []
+
+
+class DORAMetricsResponse(BaseModel):
+    """Unified DORA metrics response matching MCP get_dora_metrics output."""
+    deploy_frequency_per_day: float | None = None
+    lead_time_median_s: float | None = None
+    change_failure_rate: float | None = None
+    mttr_s: float | None = None
+    period: str = "30d"
+    service: str | None = None
