@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +9,16 @@ from ..schemas.responses import (
     HealthSummary,
     DORAMetricsResponse,
     AlertResponse,
+    DeploymentListItem,
+    DeploymentDetailWithTimelineResponse,
+    DeploymentDetailResponse,
+    HealthAssessmentResponse,
+    ServiceResponse,
+    TimelineStage,
+    HealthEvidenceItem,
+    HealthDetailResponse,
+    CompareResponse,
+    CompareMetric,
 )
 
 router = APIRouter(prefix="/api", tags=["api"])
@@ -86,6 +96,65 @@ async def list_services(session: AsyncSession = Depends(get_session)):
         ))
 
     return services
+
+
+@router.get("/deployments", response_model=list[DeploymentListItem])
+async def list_deployments(
+    service: str | None = Query(None, description="Filter by service name"),
+    status: str | None = Query(None, description="Filter by deployment status"),
+    limit: int = Query(10, ge=1, le=50, description="Max results (default 10, max 50)"),
+    session: AsyncSession = Depends(get_session),
+):
+    """List deployments with optional service/status filters."""
+    conditions = []
+    params: dict = {"limit": limit}
+
+    if service:
+        conditions.append("s.name = :service")
+        params["service"] = service
+
+    if status:
+        conditions.append("d.status = :status")
+        params["status"] = status
+
+    where_clause = ""
+    if conditions:
+        where_clause = "WHERE " + " AND ".join(conditions)
+
+    result = await session.execute(
+        text(f"""
+            SELECT d.id, d.service_id, s.name AS service_name,
+                   d.commit_sha, d.branch, d.author, d.status,
+                   d.image_tag, d.started_at, d.finished_at,
+                   ha.score AS health_score, ha.verdict AS health_verdict
+            FROM deployments d
+            JOIN services s ON s.id = d.service_id
+            LEFT JOIN health_assessments ha ON ha.deployment_id = d.id
+            {where_clause}
+            ORDER BY d.started_at DESC
+            LIMIT :limit
+        """),
+        params,
+    )
+    rows = result.fetchall()
+
+    return [
+        DeploymentListItem(
+            id=row.id,
+            service_id=row.service_id,
+            service_name=row.service_name,
+            commit_sha=row.commit_sha,
+            branch=row.branch,
+            author=row.author,
+            status=row.status,
+            image_tag=row.image_tag,
+            started_at=row.started_at,
+            finished_at=row.finished_at,
+            health=HealthSummary(score=row.health_score, verdict=row.health_verdict)
+            if row.health_score is not None else None,
+        )
+        for row in rows
+    ]
 
 
 _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
