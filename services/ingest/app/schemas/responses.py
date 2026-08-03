@@ -14,6 +14,33 @@ class ServiceResponse(BaseModel):
     created_at: datetime
 
 
+class LatestDeployInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    commit_sha: str | None = None
+    author: str | None = None
+    status: str
+    finished_at: datetime | None = None
+
+
+class HealthSummary(BaseModel):
+    score: int | None = None
+    verdict: str | None = None
+
+
+class ServiceWithStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    namespace: str
+    repo: str | None = None
+    argocd_app: str | None = None
+    latest_deploy: LatestDeployInfo | None = None
+    health: HealthSummary | None = None
+    active_alert_count: int = 0
+
+
 class DeploymentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
