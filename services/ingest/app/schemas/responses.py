@@ -98,6 +98,64 @@ class AlertResponse(BaseModel):
     alertmanager_id: str | None = None
 
 
+class TimelineStage(BaseModel):
+    stage: str
+    at: datetime | None = None
+    status: str
+    duration_s: float | None = None
+
+
+class HealthEvidenceItem(BaseModel):
+    metric: str
+    baseline: float | None = None
+    post: float | None = None
+    change_pct: float | None = None
+
+
+class DeploymentListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
+    service_name: str
+    commit_sha: str | None = None
+    branch: str | None = None
+    author: str | None = None
+    status: str
+    image_tag: str | None = None
+    started_at: datetime
+    finished_at: datetime | None = None
+    health: HealthSummary | None = None
+
+
+class DeploymentDetailWithTimelineResponse(DeploymentDetailResponse):
+    timeline: list[TimelineStage] = []
+    health_evidence: list[HealthEvidenceItem] = []
+
+
+class HealthDetailResponse(BaseModel):
+    deployment_id: int
+    status: str
+    score: int | None = None
+    verdict: str | None = None
+    assessed_at: datetime | None = None
+    evidence: list[HealthEvidenceItem] = []
+
+
+class CompareMetric(BaseModel):
+    metric: str
+    deploy_a: float | None = None
+    deploy_b: float | None = None
+    change_pct: float | None = None
+
+
+class CompareResponse(BaseModel):
+    deploy_a_id: int
+    deploy_b_id: int
+    service: str
+    metrics: list[CompareMetric] = []
+
+
 class DORADeployFrequency(BaseModel):
     deploy_date: str
     service_name: str

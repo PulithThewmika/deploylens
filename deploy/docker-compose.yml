@@ -36,6 +36,9 @@ services:
       - ../.env
     environment:
       DATABASE_URL: postgresql+asyncpg://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
+      OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
+      BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
     depends_on:
       postgres:
         condition: service_healthy
