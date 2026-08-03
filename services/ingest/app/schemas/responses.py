@@ -126,3 +126,13 @@ class DORAResponse(BaseModel):
     lead_time: list[DORALeadTime] = []
     change_failure_rate: list[DORAChangeFailureRate] = []
     mttr: list[DOAMTTR] = []
+
+
+class DORAMetricsResponse(BaseModel):
+    """Unified DORA metrics response matching MCP get_dora_metrics output."""
+    deploy_frequency_per_day: float | None = None
+    lead_time_median_s: float | None = None
+    change_failure_rate: float | None = None
+    mttr_s: float | None = None
+    period: str = "30d"
+    service: str | None = None
