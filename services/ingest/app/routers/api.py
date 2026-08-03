@@ -157,6 +157,152 @@ async def list_deployments(
     ]
 
 
+def _build_timeline(row) -> list[TimelineStage]:
+    """Construct deployment timeline from stage timestamps."""
+    stages = []
+
+    if row.commit_at:
+        stages.append(TimelineStage(stage="commit", at=row.commit_at, status="completed"))
+
+    if row.started_at:
+        build_duration = None
+        if row.build_duration_s is not None:
+            build_duration = row.build_duration_s
+        build_status = row.build_status or ("completed" if row.status not in ("pending", "building", "build_failed") else row.status)
+        stages.append(TimelineStage(
+            stage="build", at=row.started_at, status=build_status,
+            duration_s=build_duration,
+        ))
+
+    if row.argocd_revision:
+        sync_status = row.sync_status or ("completed" if row.status in ("deployed", "assessed") else "in_progress")
+        stages.append(TimelineStage(stage="sync", at=None, status=sync_status))
+
+    if row.finished_at and row.status in ("deployed", "assessed"):
+        stages.append(TimelineStage(stage="deploy", at=row.finished_at, status="completed"))
+
+    if row.assessed_at:
+        stages.append(TimelineStage(stage="assess", at=row.assessed_at, status="completed"))
+
+    return stages
+
+
+def _build_health_evidence(row) -> list[HealthEvidenceItem]:
+    """Build evidence array from health assessment columns."""
+    evidence = []
+
+    if row.error_rate_base is not None or row.error_rate_post is not None:
+        change = None
+        if row.error_rate_base is not None and row.error_rate_post is not None and row.error_rate_base > 0:
+            change = round((row.error_rate_post - row.error_rate_base) / row.error_rate_base * 100, 1)
+        evidence.append(HealthEvidenceItem(
+            metric="error_rate", baseline=row.error_rate_base,
+            post=row.error_rate_post, change_pct=change,
+        ))
+
+    if row.latency_p99_base_ms is not None or row.latency_p99_post_ms is not None:
+        change = None
+        if row.latency_p99_base_ms is not None and row.latency_p99_post_ms is not None and row.latency_p99_base_ms > 0:
+            change = round((row.latency_p99_post_ms - row.latency_p99_base_ms) / row.latency_p99_base_ms * 100, 1)
+        evidence.append(HealthEvidenceItem(
+            metric="latency_p99", baseline=row.latency_p99_base_ms,
+            post=row.latency_p99_post_ms, change_pct=change,
+        ))
+
+    if row.restarts_base is not None or row.restarts_post is not None:
+        change = None
+        if row.restarts_base is not None and row.restarts_post is not None and row.restarts_base > 0:
+            change = round((row.restarts_post - row.restarts_base) / row.restarts_base * 100, 1)
+        evidence.append(HealthEvidenceItem(
+            metric="restarts", baseline=row.restarts_base,
+            post=row.restarts_post, change_pct=change,
+        ))
+
+    return evidence
+
+
+@router.get("/deployments/{deploy_id}", response_model=DeploymentDetailWithTimelineResponse)
+async def get_deployment_detail(
+    deploy_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get full deployment detail with timeline and health evidence."""
+    result = await session.execute(
+        text("""
+            SELECT d.id, d.service_id, d.commit_sha, d.branch, d.author,
+                   d.status, d.image_tag, d.started_at, d.finished_at,
+                   d.commit_at, d.build_status, d.build_duration_s,
+                   d.sync_status, d.workflow_run_id, d.argocd_revision,
+                   d.created_at,
+                   s.id AS s_id, s.name AS s_name, s.repo AS s_repo,
+                   s.argocd_app AS s_argocd_app, s.namespace AS s_namespace,
+                   s.created_at AS s_created_at,
+                   ha.id AS ha_id, ha.score, ha.verdict,
+                   ha.error_rate_base, ha.error_rate_post,
+                   ha.latency_p99_base_ms, ha.latency_p99_post_ms,
+                   ha.restarts_base, ha.restarts_post,
+                   ha.details, ha.assessed_at
+            FROM deployments d
+            JOIN services s ON s.id = d.service_id
+            LEFT JOIN health_assessments ha ON ha.deployment_id = d.id
+            WHERE d.id = :deploy_id
+        """),
+        {"deploy_id": deploy_id},
+    )
+    row = result.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    health_assessment = None
+    if row.ha_id is not None:
+        health_assessment = HealthAssessmentResponse(
+            id=row.ha_id,
+            deployment_id=row.id,
+            score=row.score,
+            verdict=row.verdict,
+            error_rate_base=row.error_rate_base,
+            error_rate_post=row.error_rate_post,
+            latency_p99_base_ms=row.latency_p99_base_ms,
+            latency_p99_post_ms=row.latency_p99_post_ms,
+            restarts_base=row.restarts_base,
+            restarts_post=row.restarts_post,
+            details=row.details,
+            assessed_at=row.assessed_at,
+        )
+
+    service = ServiceResponse(
+        id=row.s_id,
+        name=row.s_name,
+        repo=row.s_repo,
+        argocd_app=row.s_argocd_app,
+        namespace=row.s_namespace,
+        created_at=row.s_created_at,
+    )
+
+    return DeploymentDetailWithTimelineResponse(
+        id=row.id,
+        service_id=row.service_id,
+        commit_sha=row.commit_sha,
+        branch=row.branch,
+        author=row.author,
+        status=row.status,
+        image_tag=row.image_tag,
+        started_at=row.started_at,
+        finished_at=row.finished_at,
+        commit_at=row.commit_at,
+        build_status=row.build_status,
+        build_duration_s=row.build_duration_s,
+        sync_status=row.sync_status,
+        workflow_run_id=row.workflow_run_id,
+        argocd_revision=row.argocd_revision,
+        created_at=row.created_at,
+        health_assessment=health_assessment,
+        service=service,
+        timeline=_build_timeline(row),
+        health_evidence=_build_health_evidence(row),
+    )
+
+
 _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 
 
