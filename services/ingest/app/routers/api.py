@@ -486,3 +486,76 @@ async def list_alerts(
         )
         for row in rows
     ]
+
+
+@router.get("/compare", response_model=CompareResponse)
+async def compare_deployments(
+    a: int = Query(..., description="First deployment ID"),
+    b: int = Query(..., description="Second deployment ID"),
+    session: AsyncSession = Depends(get_session),
+):
+    """Compare two deployments side-by-side with live PromQL metrics."""
+    from ..promql import fetch_metrics_at, OBSERVATION_WINDOW
+
+    result = await session.execute(
+        text("""
+            SELECT d.id, d.service_id, d.finished_at,
+                   s.name AS service_name, s.namespace
+            FROM deployments d
+            JOIN services s ON s.id = d.service_id
+            WHERE d.id IN (:a, :b)
+        """),
+        {"a": a, "b": b},
+    )
+    rows = {row.id: row for row in result.fetchall()}
+
+    if a not in rows:
+        raise HTTPException(status_code=404, detail=f"Deployment {a} not found")
+    if b not in rows:
+        raise HTTPException(status_code=404, detail=f"Deployment {b} not found")
+
+    row_a, row_b = rows[a], rows[b]
+
+    if row_a.service_id != row_b.service_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Both deployments must belong to the same service",
+        )
+
+    if not row_a.finished_at or not row_b.finished_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Both deployments must have finished_at timestamps",
+        )
+
+    service_name = row_a.service_name
+    namespace = row_a.namespace
+
+    metrics_a = await fetch_metrics_at(
+        service_name, namespace, OBSERVATION_WINDOW, row_a.finished_at,
+    )
+    metrics_b = await fetch_metrics_at(
+        service_name, namespace, OBSERVATION_WINDOW, row_b.finished_at,
+    )
+
+    compare_metrics = []
+    for metric_key, label in [
+        ("error_rate", "error_rate"),
+        ("latency_p99_ms", "latency_p99"),
+        ("restarts", "restarts"),
+    ]:
+        val_a = metrics_a.get(metric_key)
+        val_b = metrics_b.get(metric_key)
+        change = None
+        if val_a is not None and val_b is not None and val_a > 0:
+            change = round((val_b - val_a) / val_a * 100, 1)
+        compare_metrics.append(CompareMetric(
+            metric=label, deploy_a=val_a, deploy_b=val_b, change_pct=change,
+        ))
+
+    return CompareResponse(
+        deploy_a_id=a,
+        deploy_b_id=b,
+        service=service_name,
+        metrics=compare_metrics,
+    )
