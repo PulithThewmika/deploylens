@@ -303,6 +303,45 @@ async def get_deployment_detail(
     )
 
 
+@router.get("/deployments/{deploy_id}/health", response_model=HealthDetailResponse)
+async def get_deployment_health(
+    deploy_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    """Get health assessment for a deployment with evidence array."""
+    result = await session.execute(
+        text("""
+            SELECT d.id AS deploy_id, d.status,
+                   ha.score, ha.verdict, ha.assessed_at,
+                   ha.error_rate_base, ha.error_rate_post,
+                   ha.latency_p99_base_ms, ha.latency_p99_post_ms,
+                   ha.restarts_base, ha.restarts_post
+            FROM deployments d
+            LEFT JOIN health_assessments ha ON ha.deployment_id = d.id
+            WHERE d.id = :deploy_id
+        """),
+        {"deploy_id": deploy_id},
+    )
+    row = result.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Deployment not found")
+
+    if row.score is None:
+        return HealthDetailResponse(
+            deployment_id=deploy_id,
+            status="pending",
+        )
+
+    return HealthDetailResponse(
+        deployment_id=deploy_id,
+        status="assessed",
+        score=row.score,
+        verdict=row.verdict,
+        assessed_at=row.assessed_at,
+        evidence=_build_health_evidence(row),
+    )
+
+
 _PERIOD_DAYS = {"7d": 7, "30d": 30, "90d": 90}
 
 
