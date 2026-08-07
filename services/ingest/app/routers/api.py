@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger("deploylens.api")
 
 from ..db import get_session
 from ..schemas.responses import (
@@ -559,3 +563,63 @@ async def compare_deployments(
         service=service_name,
         metrics=compare_metrics,
     )
+
+
+@router.post("/alerts/inbound")
+async def alerts_inbound(
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+):
+    """Receive Alertmanager webhook notifications.
+
+    For resolved alerts, updates alerts.resolved_at matching on labels
+    (service, deploy_id). Idempotent — duplicate resolutions are no-ops.
+    """
+    payload = await request.json()
+
+    alerts = payload.get("alerts", [])
+    resolved_count = 0
+
+    for alert in alerts:
+        if alert.get("status") != "resolved":
+            continue
+
+        labels = alert.get("labels", {})
+        deploy_id = labels.get("deploy_id")
+        service = labels.get("service")
+
+        if not deploy_id or not service:
+            logger.warning(
+                "Resolved alert missing deploy_id or service label, skipping"
+            )
+            continue
+
+        ends_at = alert.get("endsAt")
+
+        result = await session.execute(
+            text("""
+                UPDATE alerts
+                SET resolved_at = COALESCE(resolved_at, now())
+                WHERE deployment_id = :deploy_id
+                  AND resolved_at IS NULL
+                  AND service_id = (
+                      SELECT id FROM services WHERE name = :service LIMIT 1
+                  )
+            """),
+            {"deploy_id": int(deploy_id), "service": service},
+        )
+
+        if result.rowcount > 0:
+            resolved_count += result.rowcount
+            logger.info(
+                "Resolved %d alert(s) for deploy %s service %s",
+                result.rowcount, deploy_id, service,
+            )
+        else:
+            logger.info(
+                "No unresolved alert found for deploy %s service %s (already resolved or not found)",
+                deploy_id, service,
+            )
+
+    await session.commit()
+    return {"status": "ok", "resolved": resolved_count}
