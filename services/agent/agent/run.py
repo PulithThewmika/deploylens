@@ -29,6 +29,7 @@ from .db import get_session, dispose_engine, engine
 from .health_score import assess_deployment
 from .alerting import fire_alert, close_alertmanager_client
 from .promql import close_prom_client
+from .reconciliation import reconcile_active_alerts
 
 logging.basicConfig(
     level=logging.INFO,
@@ -166,6 +167,13 @@ async def agent_loop() -> None:
                     logger.exception(
                         "Error processing deployment %d, continuing to next", row.id
                     )
+
+            try:
+                resolved = await reconcile_active_alerts(session)
+                if resolved:
+                    logger.info("Reconciliation resolved %d alert(s)", resolved)
+            except Exception:
+                logger.exception("Error during alert reconciliation")
     except Exception:
         logger.exception("Agent loop error")
 
