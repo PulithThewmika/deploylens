@@ -141,8 +141,9 @@ async def test_agent_loop_ignores_already_assessed():
     mock_session.__aenter__ = AsyncMock(return_value=mock_session)
     mock_session.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("agent.run.get_session", new_callable=AsyncMock, return_value=mock_session):
+    with patch("agent.run.get_session", new_callable=AsyncMock, return_value=mock_session), \
+         patch("agent.run.reconcile_active_alerts", new_callable=AsyncMock, return_value=0):
         await agent_loop()
 
-    # Only the count query, no processing
+    # Only the find-unassessed query, no processing
     assert mock_session.execute.call_count == 1
