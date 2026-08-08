@@ -1,11 +1,11 @@
--- V004: Add 'assessed' to deployments status constraint
+-- V009: Add 'assessed' to deployments status constraint
 -- The detection agent sets status='assessed' after health scoring completes.
 -- Idempotent — safe to run multiple times.
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM schema_versions WHERE version = 'V004') THEN
-        RAISE NOTICE 'V004 already applied, skipping.';
+    IF EXISTS (SELECT 1 FROM schema_versions WHERE version = 'V009') THEN
+        RAISE NOTICE 'V009 already applied, skipping.';
         RETURN;
     END IF;
 
@@ -49,6 +49,6 @@ BEGIN
     GRANT SELECT ON dora_change_failure_rate TO grafana_ro;
 
     INSERT INTO schema_versions (version, description)
-    VALUES ('V004', 'Add assessed status to deployments, update CFR view to count degraded verdicts');
+    VALUES ('V009', 'Add assessed status to deployments, update CFR view to count degraded verdicts');
 
 END $$;
