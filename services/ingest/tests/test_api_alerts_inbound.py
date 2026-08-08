@@ -202,6 +202,23 @@ async def test_inbound_unparseable_endsat_falls_back_to_none(client, mock_sessio
 
 
 @pytest.mark.asyncio
+async def test_inbound_non_numeric_deploy_id_skipped(client, mock_session, alertmanager_token):
+    """Non-numeric deploy_id label is skipped with 200, not a 500 crash."""
+    alert = _resolved_alert(deploy_id="not-a-number")
+    payload = _alertmanager_payload([alert])
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
+
+    assert resp.status_code == 200
+    assert resp.json()["resolved"] == 0
+    mock_session.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_inbound_missing_labels_skipped(client, mock_session, alertmanager_token):
     alert = {
         "status": "resolved",
