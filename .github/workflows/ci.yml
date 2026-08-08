@@ -27,11 +27,6 @@ jobs:
           pip install pytest pytest-asyncio httpx
 
       - name: Run tests
-        env:
-          DATABASE_URL: "sqlite+aiosqlite://"
-          GITHUB_WEBHOOK_SECRET: "test-secret"
-          ARGOCD_WEBHOOK_TOKEN: "test-token"
-          ALERTMANAGER_WEBHOOK_TOKEN: "test-token"
         run: pytest tests/ -v
 
   test-agent:
