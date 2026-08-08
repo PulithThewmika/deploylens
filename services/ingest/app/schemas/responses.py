@@ -14,6 +14,33 @@ class ServiceResponse(BaseModel):
     created_at: datetime
 
 
+class LatestDeployInfo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    commit_sha: str | None = None
+    author: str | None = None
+    status: str
+    finished_at: datetime | None = None
+
+
+class HealthSummary(BaseModel):
+    score: int | None = None
+    verdict: str | None = None
+
+
+class ServiceWithStatusResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    namespace: str
+    repo: str | None = None
+    argocd_app: str | None = None
+    latest_deploy: LatestDeployInfo | None = None
+    health: HealthSummary | None = None
+    active_alert_count: int = 0
+
+
 class DeploymentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -71,31 +98,69 @@ class AlertResponse(BaseModel):
     alertmanager_id: str | None = None
 
 
-class DORADeployFrequency(BaseModel):
-    deploy_date: str
+class TimelineStage(BaseModel):
+    stage: str
+    at: datetime | None = None
+    status: str
+    duration_s: float | None = None
+
+
+class HealthEvidenceItem(BaseModel):
+    metric: str
+    baseline: float | None = None
+    post: float | None = None
+    change_pct: float | None = None
+
+
+class DeploymentListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    service_id: int
     service_name: str
-    deploy_count: int
+    commit_sha: str | None = None
+    branch: str | None = None
+    author: str | None = None
+    status: str
+    image_tag: str | None = None
+    started_at: datetime
+    finished_at: datetime | None = None
+    health: HealthSummary | None = None
 
 
-class DORALeadTime(BaseModel):
-    service_name: str
-    avg_lead_time_seconds: float
+class DeploymentDetailWithTimelineResponse(DeploymentDetailResponse):
+    timeline: list[TimelineStage] = []
+    health_evidence: list[HealthEvidenceItem] = []
 
 
-class DORAChangeFailureRate(BaseModel):
-    service_name: str
-    total_deploys: int
-    failed_deploys: int
-    failure_rate: float
+class HealthDetailResponse(BaseModel):
+    deployment_id: int
+    status: str
+    score: int | None = None
+    verdict: str | None = None
+    assessed_at: datetime | None = None
+    evidence: list[HealthEvidenceItem] = []
 
 
-class DOAMTTR(BaseModel):
-    service_name: str
-    avg_mttr_seconds: float
+class CompareMetric(BaseModel):
+    metric: str
+    deploy_a: float | None = None
+    deploy_b: float | None = None
+    change_pct: float | None = None
 
 
-class DORAResponse(BaseModel):
-    deploy_frequency: list[DORADeployFrequency] = []
-    lead_time: list[DORALeadTime] = []
-    change_failure_rate: list[DORAChangeFailureRate] = []
-    mttr: list[DOAMTTR] = []
+class CompareResponse(BaseModel):
+    deploy_a_id: int
+    deploy_b_id: int
+    service: str
+    metrics: list[CompareMetric] = []
+
+
+class DORAMetricsResponse(BaseModel):
+    """Unified DORA metrics response matching MCP get_dora_metrics output."""
+    deploy_frequency_per_day: float | None = None
+    lead_time_avg_s: float | None = None
+    change_failure_rate: float | None = None
+    mttr_s: float | None = None
+    period: str = "30d"
+    service: str | None = None

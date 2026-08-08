@@ -1,9 +1,13 @@
 """Tests for webhook authentication — HMAC (GitHub) and bearer token (ArgoCD)."""
 
 import json
+import os
+from unittest.mock import patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+
+from app.auth import validate_auth_tokens
 
 
 @pytest.mark.asyncio
@@ -107,3 +111,24 @@ async def test_argocd_bad_token_returns_401(client):
             },
         )
     assert resp.status_code == 401
+
+
+def test_validate_auth_tokens_raises_on_empty_github():
+    """Startup rejects empty GITHUB_WEBHOOK_SECRET."""
+    with patch("app.auth.GITHUB_WEBHOOK_SECRET", ""):
+        with pytest.raises(RuntimeError, match="GITHUB_WEBHOOK_SECRET"):
+            validate_auth_tokens()
+
+
+def test_validate_auth_tokens_raises_on_empty_argocd():
+    """Startup rejects empty ARGOCD_WEBHOOK_TOKEN."""
+    with patch("app.auth.ARGOCD_WEBHOOK_TOKEN", ""):
+        with pytest.raises(RuntimeError, match="ARGOCD_WEBHOOK_TOKEN"):
+            validate_auth_tokens()
+
+
+def test_validate_auth_tokens_raises_on_empty_alertmanager():
+    """Startup rejects empty ALERTMANAGER_WEBHOOK_TOKEN."""
+    with patch("app.auth.ALERTMANAGER_WEBHOOK_TOKEN", ""):
+        with pytest.raises(RuntimeError, match="ALERTMANAGER_WEBHOOK_TOKEN"):
+            validate_auth_tokens()

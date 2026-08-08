@@ -1,0 +1,46 @@
+# Alertmanager configuration for DeployLens.
+#
+# This config is applied via the kube-prometheus-stack Helm chart
+# (deploy/helm-values/kube-prometheus-stack.yaml, alertmanager.config block).
+# This standalone file exists as a readable reference and for local testing.
+#
+# SLACK_WEBHOOK_URL is injected via a Kubernetes secret
+# (alertmanager-slack-secret.yaml) mounted into Alertmanager by the Helm chart.
+
+global:
+  slack_api_url_file: /etc/alertmanager/secrets/deploylens-alertmanager-slack/url
+
+route:
+  receiver: "null"
+  group_by: ["alertname", "service"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        alertname: DeployDegradation
+      receiver: slack-deploylens
+      continue: false
+
+receivers:
+  - name: "null"
+  - name: slack-deploylens
+    slack_configs:
+      - channel: "#deploylens-alerts"
+        send_resolved: true
+        title: >-
+          {{ if eq .Status "resolved" }}:white_check_mark:{{ else }}:rotating_light:{{ end }}
+          Deploy #{{ .CommonLabels.deploy_id }} — {{ .CommonLabels.service }}
+        text: >-
+          *Score:* {{ .CommonAnnotations.summary }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Evidence:* {{ .CommonAnnotations.description }}
+        color: >-
+          {{ if eq .Status "resolved" }}good{{ else if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}
+    webhook_configs:
+      - url: http://host.docker.internal:8000/api/alerts/inbound
+        send_resolved: true
+        http_config:
+          authorization:
+            type: Bearer
+            credentials_file: /etc/alertmanager/secrets/deploylens-alertmanager-webhook/token

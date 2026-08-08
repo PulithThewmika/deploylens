@@ -1,4 +1,4 @@
--- V004: Seed the sample-app service with its repo <-> argocd_app mapping.
+-- V006: Seed the sample-app service with its repo <-> argocd_app mapping.
 --
 -- Correlation requires CI events (GitHub webhooks, keyed by `repo`) and CD
 -- events (ArgoCD notifications, keyed by `argocd_app`) to resolve to the SAME
@@ -20,8 +20,8 @@
 
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM schema_versions WHERE version = 'V004') THEN
-        RAISE NOTICE 'V004 already applied, skipping.';
+    IF EXISTS (SELECT 1 FROM schema_versions WHERE version = 'V006') THEN
+        RAISE NOTICE 'V006 already applied, skipping.';
         RETURN;
     END IF;
 
@@ -34,6 +34,12 @@ BEGIN
             argocd_app = EXCLUDED.argocd_app,
             namespace  = EXCLUDED.namespace;
 
+    -- Set sample-app prom_components here (after row exists) rather than in
+    -- V005 where the UPDATE was a no-op on fresh databases (#159)
+    UPDATE services
+       SET prom_components = ARRAY['frontend', 'orders', 'payments']
+     WHERE name = 'sample-app';
+
     INSERT INTO schema_versions (version, description)
-    VALUES ('V004', 'Seed sample-app service with repo <-> argocd_app mapping for CI/CD correlation');
+    VALUES ('V006', 'Seed sample-app service with repo <-> argocd_app mapping for CI/CD correlation');
 END $$;
