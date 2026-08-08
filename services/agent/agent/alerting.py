@@ -149,6 +149,14 @@ async def resolve_alert(session: AsyncSession, alert_id: int, service_name: str,
     """Send endsAt to Alertmanager and update alerts.resolved_at."""
     now = datetime.now(timezone.utc)
 
+    # Fetch severity from the alert row so the resolution label set matches the firing payload
+    result = await session.execute(
+        text("SELECT severity FROM alerts WHERE id = :alert_id"),
+        {"alert_id": alert_id},
+    )
+    row = result.fetchone()
+    severity = row.severity if row else "warning"
+
     # Update PostgreSQL
     await session.execute(
         text("""
@@ -159,12 +167,14 @@ async def resolve_alert(session: AsyncSession, alert_id: int, service_name: str,
     )
     logger.info("Alert #%d resolved in DB", alert_id)
 
-    # Send resolution to Alertmanager
+    # Send resolution to Alertmanager — labels must match the firing payload exactly
+    # so Alertmanager can match the fingerprint and clear the correct alert
     payload = [{
         "labels": {
             "alertname": "DeployDegradation",
             "service": service_name,
             "deploy_id": str(deployment_id),
+            "severity": severity,
         },
         "endsAt": now.isoformat(),
     }]
