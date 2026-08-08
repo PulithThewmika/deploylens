@@ -1,9 +1,9 @@
-"""Validate DORA metric calculations with known test data (#37).
+"""DORA API pass-through tests — verify values survive the response pipeline.
 
-These tests feed deterministic values through the DORA API endpoint
-and verify the mathematical results match hand-calculated expectations.
-Unlike test_api_dora.py (which tests API shape), these validate the
-actual arithmetic the endpoint performs.
+These tests mock the database layer and confirm that scalar results from
+the DORA view queries are correctly passed through the endpoint's
+aggregation logic and Pydantic response model. They do NOT validate SQL
+correctness — see test_dora_integration.py for real-database view tests.
 """
 
 from decimal import Decimal
