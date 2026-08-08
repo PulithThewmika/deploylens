@@ -169,6 +169,7 @@ async def agent_loop() -> None:
                     logger.exception(
                         "Error processing deployment %d, continuing to next", row.id
                     )
+                    await session.rollback()
 
             try:
                 resolved = await reconcile_active_alerts(session)
@@ -176,6 +177,7 @@ async def agent_loop() -> None:
                     logger.info("Reconciliation resolved %d alert(s)", resolved)
             except Exception:
                 logger.exception("Error during alert reconciliation")
+                await session.rollback()
     except Exception:
         logger.exception("Agent loop error")
 
