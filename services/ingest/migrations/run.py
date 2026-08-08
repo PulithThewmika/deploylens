@@ -34,6 +34,19 @@ def run_migrations(url: str):
         print("No migration files found.")
         return
 
+    versions_seen: dict[str, str] = {}
+    for sql_path in sql_files:
+        fname = os.path.basename(sql_path)
+        ver = fname.split("__")[0]
+        if ver in versions_seen:
+            print(
+                f"FATAL: duplicate migration version {ver} — "
+                f"{versions_seen[ver]} and {fname}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        versions_seen[ver] = fname
+
     for sql_path in sql_files:
         filename = os.path.basename(sql_path)
         version = filename.split("__")[0]
