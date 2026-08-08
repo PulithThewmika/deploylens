@@ -49,8 +49,35 @@ def _firing_alert(deploy_id="2", service="orders"):
     }
 
 
+def _auth_headers(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
 @pytest.mark.asyncio
-async def test_inbound_resolves_alert(client, mock_session):
+async def test_inbound_rejects_missing_auth(client):
+    payload = _alertmanager_payload([_resolved_alert()])
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.post("/api/alerts/inbound", json=payload)
+
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_inbound_rejects_bad_token(client):
+    payload = _alertmanager_payload([_resolved_alert()])
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers("wrong-token"),
+        )
+
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_inbound_resolves_alert(client, mock_session, alertmanager_token):
     result = MagicMock()
     result.rowcount = 1
     mock_session.execute.return_value = result
@@ -58,7 +85,10 @@ async def test_inbound_resolves_alert(client, mock_session):
     payload = _alertmanager_payload([_resolved_alert()])
 
     async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
-        resp = await ac.post("/api/alerts/inbound", json=payload)
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -68,7 +98,7 @@ async def test_inbound_resolves_alert(client, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_inbound_duplicate_resolution_is_noop(client, mock_session):
+async def test_inbound_duplicate_resolution_is_noop(client, mock_session, alertmanager_token):
     result = MagicMock()
     result.rowcount = 0
     mock_session.execute.return_value = result
@@ -76,7 +106,10 @@ async def test_inbound_duplicate_resolution_is_noop(client, mock_session):
     payload = _alertmanager_payload([_resolved_alert()])
 
     async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
-        resp = await ac.post("/api/alerts/inbound", json=payload)
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -84,11 +117,14 @@ async def test_inbound_duplicate_resolution_is_noop(client, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_inbound_ignores_firing_alerts(client, mock_session):
+async def test_inbound_ignores_firing_alerts(client, mock_session, alertmanager_token):
     payload = _alertmanager_payload([_firing_alert()])
 
     async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
-        resp = await ac.post("/api/alerts/inbound", json=payload)
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
 
     assert resp.status_code == 200
     assert resp.json()["resolved"] == 0
@@ -96,7 +132,7 @@ async def test_inbound_ignores_firing_alerts(client, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_inbound_mixed_alerts(client, mock_session):
+async def test_inbound_mixed_alerts(client, mock_session, alertmanager_token):
     result = MagicMock()
     result.rowcount = 1
     mock_session.execute.return_value = result
@@ -108,14 +144,17 @@ async def test_inbound_mixed_alerts(client, mock_session):
     ])
 
     async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
-        resp = await ac.post("/api/alerts/inbound", json=payload)
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
 
     assert resp.status_code == 200
     assert resp.json()["resolved"] == 2
 
 
 @pytest.mark.asyncio
-async def test_inbound_missing_labels_skipped(client, mock_session):
+async def test_inbound_missing_labels_skipped(client, mock_session, alertmanager_token):
     alert = {
         "status": "resolved",
         "labels": {"alertname": "DeployDegradation"},
@@ -124,7 +163,10 @@ async def test_inbound_missing_labels_skipped(client, mock_session):
     payload = _alertmanager_payload([alert])
 
     async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
-        resp = await ac.post("/api/alerts/inbound", json=payload)
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
 
     assert resp.status_code == 200
     assert resp.json()["resolved"] == 0
