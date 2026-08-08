@@ -1,5 +1,6 @@
 """Tests for POST /api/alerts/inbound endpoint."""
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -151,6 +152,53 @@ async def test_inbound_mixed_alerts(client, mock_session, alertmanager_token):
 
     assert resp.status_code == 200
     assert resp.json()["resolved"] == 2
+
+
+@pytest.mark.asyncio
+async def test_inbound_uses_endsat_for_resolved_at(client, mock_session, alertmanager_token):
+    """endsAt from Alertmanager is parsed and passed to the UPDATE query,
+    so resolved_at reflects actual resolution time, not webhook arrival."""
+    result = MagicMock()
+    result.rowcount = 1
+    mock_session.execute.return_value = result
+
+    payload = _alertmanager_payload([
+        _resolved_alert(deploy_id="1", ends_at="2026-08-01T10:30:00Z"),
+    ])
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
+
+    assert resp.status_code == 200
+    call_args = mock_session.execute.call_args
+    params = call_args[0][1]
+    assert params["ends_at"] == datetime(2026, 8, 1, 10, 30, 0, tzinfo=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_inbound_unparseable_endsat_falls_back_to_none(client, mock_session, alertmanager_token):
+    """When endsAt is garbage, ends_at param is None so SQL falls back to now()."""
+    result = MagicMock()
+    result.rowcount = 1
+    mock_session.execute.return_value = result
+
+    payload = _alertmanager_payload([
+        _resolved_alert(deploy_id="1", ends_at="not-a-date"),
+    ])
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.post(
+            "/api/alerts/inbound", json=payload,
+            headers=_auth_headers(alertmanager_token),
+        )
+
+    assert resp.status_code == 200
+    call_args = mock_session.execute.call_args
+    params = call_args[0][1]
+    assert params["ends_at"] is None
 
 
 @pytest.mark.asyncio
