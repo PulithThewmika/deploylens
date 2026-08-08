@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.health_score import clamp, penalty, compute_health_score
+from agent.health_score import clamp, penalty, compute_health_score, _max_of, _sum_of
 
 
 # ── clamp ────────────────────────────────────────────────────────────
@@ -247,3 +247,31 @@ class TestComputeHealthScore:
         score, verdict, details = compute_health_score(metrics)
         assert score == 0
         assert verdict == "failed"
+
+
+# ── aggregation helpers ─────────────────────────────────────────────
+
+class TestAggregationHelpers:
+    def test_max_of_returns_max(self):
+        assert _max_of([0.1, 0.5, 0.3]) == pytest.approx(0.5)
+
+    def test_max_of_ignores_none(self):
+        assert _max_of([None, 0.3, None]) == pytest.approx(0.3)
+
+    def test_max_of_all_none(self):
+        assert _max_of([None, None]) is None
+
+    def test_max_of_empty(self):
+        assert _max_of([]) is None
+
+    def test_sum_of_returns_sum(self):
+        assert _sum_of([1.0, 2.0, 3.0]) == pytest.approx(6.0)
+
+    def test_sum_of_ignores_none(self):
+        assert _sum_of([1.0, None, 3.0]) == pytest.approx(4.0)
+
+    def test_sum_of_all_none(self):
+        assert _sum_of([None, None]) is None
+
+    def test_sum_of_empty(self):
+        assert _sum_of([]) is None

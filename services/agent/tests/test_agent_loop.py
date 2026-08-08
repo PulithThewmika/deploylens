@@ -16,13 +16,15 @@ def mock_session():
 
 
 def _make_deploy_row(deploy_id=1, service_id=1, service_name="orders",
-                     namespace="deploylens", commit_sha="abc1234"):
+                     namespace="deploylens", commit_sha="abc1234",
+                     prom_components=None):
     row = MagicMock()
     row.id = deploy_id
     row.service_id = service_id
     row.service_name = service_name
     row.namespace = namespace
     row.commit_sha = commit_sha
+    row.prom_components = prom_components
     row.finished_at = datetime(2026, 8, 3, 12, 0, 0, tzinfo=timezone.utc)
     return row
 
