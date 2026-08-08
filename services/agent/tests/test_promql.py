@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from agent.promql import (
+    _sanitize_label,
     query_prometheus,
     query_error_rate,
     query_latency_p99,
@@ -147,3 +148,34 @@ async def test_query_restarts(mock_client):
     query = call_args.kwargs["params"]["query"]
     assert "kube_pod_container_status_restarts_total" in query
     assert 'container="payments"' in query
+
+
+def test_sanitize_label_clean_value():
+    """Normal service name passes through unchanged."""
+    assert _sanitize_label("orders") == "orders"
+
+
+def test_sanitize_label_escapes_double_quote():
+    """Double quotes are escaped to prevent PromQL injection."""
+    assert _sanitize_label('x"} or vector(1)') == 'x\\"} or vector(1)'
+
+
+def test_sanitize_label_escapes_backslash():
+    """Backslashes are escaped."""
+    assert _sanitize_label("a\\b") == "a\\\\b"
+
+
+def test_sanitize_label_escapes_newlines():
+    """Newlines and carriage returns are escaped."""
+    assert _sanitize_label("a\nb\r") == "a\\\nb\\\r"
+
+
+@pytest.mark.asyncio
+async def test_query_error_rate_sanitizes_service(mock_client):
+    """Service names with injection characters are escaped in PromQL."""
+    mock_client.get.return_value = _mock_response(_make_prom_response(0.01))
+
+    await query_error_rate('x"} or vector(1){a="', "deploylens", "30m", TS)
+
+    query = mock_client.get.call_args.kwargs["params"]["query"]
+    assert 'service="x\\"} or vector(1){a=\\"' in query

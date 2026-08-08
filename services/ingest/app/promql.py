@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import datetime
 
 import httpx
@@ -17,6 +18,13 @@ logger = logging.getLogger("deploylens.ingest.promql")
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 OBSERVATION_WINDOW = os.environ.get("OBSERVATION_WINDOW", "15m")
 BASELINE_WINDOW = os.environ.get("BASELINE_WINDOW", "30m")
+
+_UNSAFE_LABEL_RE = re.compile(r'[\\"\n\r]')
+
+
+def _sanitize_label(value: str) -> str:
+    """Escape characters that break PromQL label matchers."""
+    return _UNSAFE_LABEL_RE.sub(lambda m: "\\" + m.group(0), value)
 
 _client: httpx.AsyncClient | None = None
 
@@ -53,26 +61,27 @@ async def _query(promql: str, time: datetime) -> float | None:
 async def fetch_metrics_at(
     service: str, namespace: str, window: str, timestamp: datetime,
 ) -> dict[str, float | None]:
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     error_rate = await _query(
-        f'sum(rate(http_requests_total{{service="{service}",'
-        f'namespace="{namespace}",status=~"5.."}}[{window}]))'
+        f'sum(rate(http_requests_total{{service="{svc}",'
+        f'namespace="{ns}",status=~"5.."}}[{window}]))'
         f' / '
-        f'sum(rate(http_requests_total{{service="{service}",'
-        f'namespace="{namespace}"}}[{window}]))',
+        f'sum(rate(http_requests_total{{service="{svc}",'
+        f'namespace="{ns}"}}[{window}]))',
         timestamp,
     )
 
     latency_raw = await _query(
         f'histogram_quantile(0.99,'
-        f'sum(rate(http_request_duration_seconds_bucket{{service="{service}",'
-        f'namespace="{namespace}"}}[{window}])) by (le))',
+        f'sum(rate(http_request_duration_seconds_bucket{{service="{svc}",'
+        f'namespace="{ns}"}}[{window}])) by (le))',
         timestamp,
     )
     latency_p99_ms = latency_raw * 1000 if latency_raw is not None else None
 
     restarts = await _query(
         f'sum(increase(kube_pod_container_status_restarts_total'
-        f'{{namespace="{namespace}",container="{service}"}}[{window}]))',
+        f'{{namespace="{ns}",container="{svc}"}}[{window}]))',
         timestamp,
     )
 

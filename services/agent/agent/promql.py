@@ -8,6 +8,7 @@ follows doc 05 exactly.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 
 import httpx
@@ -15,6 +16,14 @@ import httpx
 from .config import PROM_URL
 
 logger = logging.getLogger("deploylens.agent.promql")
+
+_UNSAFE_LABEL_RE = re.compile(r'[\\"\n\r]')
+
+
+def _sanitize_label(value: str) -> str:
+    """Escape characters that break PromQL label matchers."""
+    return _UNSAFE_LABEL_RE.sub(lambda m: "\\" + m.group(0), value)
+
 
 _client: httpx.AsyncClient | None = None
 
@@ -76,12 +85,13 @@ async def query_error_rate(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query HTTP error rate (5xx / total) for a service over a window."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
-        f'sum(rate(http_requests_total{{service="{service}",'
-        f'namespace="{namespace}",status=~"5.."}}[{window}]))'
+        f'sum(rate(http_requests_total{{service="{svc}",'
+        f'namespace="{ns}",status=~"5.."}}[{window}]))'
         f' / '
-        f'sum(rate(http_requests_total{{service="{service}",'
-        f'namespace="{namespace}"}}[{window}]))'
+        f'sum(rate(http_requests_total{{service="{svc}",'
+        f'namespace="{ns}"}}[{window}]))'
     )
     return await query_prometheus(promql, timestamp)
 
@@ -90,10 +100,11 @@ async def query_latency_p99(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query p99 latency in seconds for a service over a window."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
         f'histogram_quantile(0.99,'
-        f'sum(rate(http_request_duration_seconds_bucket{{service="{service}",'
-        f'namespace="{namespace}"}}[{window}])) by (le))'
+        f'sum(rate(http_request_duration_seconds_bucket{{service="{svc}",'
+        f'namespace="{ns}"}}[{window}])) by (le))'
     )
     result = await query_prometheus(promql, timestamp)
     if result is not None:
@@ -105,9 +116,10 @@ async def query_restarts(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query container restart count increase over a window."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
         f'sum(increase(kube_pod_container_status_restarts_total'
-        f'{{namespace="{namespace}",container="{service}"}}[{window}]))'
+        f'{{namespace="{ns}",container="{svc}"}}[{window}]))'
     )
     return await query_prometheus(promql, timestamp)
 
@@ -116,9 +128,10 @@ async def query_request_rate(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query request rate (rps) for guard-rail volume check."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
-        f'sum(rate(http_requests_total{{service="{service}",'
-        f'namespace="{namespace}"}}[{window}]))'
+        f'sum(rate(http_requests_total{{service="{svc}",'
+        f'namespace="{ns}"}}[{window}]))'
     )
     return await query_prometheus(promql, timestamp)
 
@@ -127,9 +140,10 @@ async def query_cpu(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query CPU usage for a service (stretch — safety score)."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
         f'sum(rate(container_cpu_usage_seconds_total'
-        f'{{namespace="{namespace}",container="{service}"}}[{window}]))'
+        f'{{namespace="{ns}",container="{svc}"}}[{window}]))'
     )
     return await query_prometheus(promql, timestamp)
 
@@ -138,8 +152,9 @@ async def query_memory(
     service: str, namespace: str, window: str, timestamp: datetime
 ) -> float | None:
     """Query memory usage in bytes for a service (stretch — safety score)."""
+    svc, ns = _sanitize_label(service), _sanitize_label(namespace)
     promql = (
         f'sum(container_memory_working_set_bytes'
-        f'{{namespace="{namespace}",container="{service}"}})'
+        f'{{namespace="{ns}",container="{svc}"}})'
     )
     return await query_prometheus(promql, timestamp)
