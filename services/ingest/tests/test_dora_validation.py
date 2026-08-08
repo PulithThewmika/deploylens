@@ -53,14 +53,14 @@ async def test_deploy_frequency_single_day(client, mock_session):
     assert abs(data["deploy_frequency_per_day"] - (5.0 / 7.0)) < 0.001
 
 
-# ── Lead Time (Median) ───────────────────────────────────────────────
+# ── Lead Time (Average) ──────────────────────────────────────────────
 # Scenario: 5 deployments with lead times (in seconds):
 #   300, 600, 900, 1200, 1500
-# Median (50th percentile) of sorted list = 900s (the middle value)
+# Average = (300+600+900+1200+1500) / 5 = 900s
 
 @pytest.mark.asyncio
-async def test_lead_time_median_odd_count(client, mock_session):
-    """Median of [300, 600, 900, 1200, 1500] = 900s."""
+async def test_lead_time_avg_odd_count(client, mock_session):
+    """Average of [300, 600, 900, 1200, 1500] = 900s."""
     null_result = MagicMock()
     null_result.scalar_one_or_none.return_value = None
 
@@ -73,12 +73,12 @@ async def test_lead_time_median_odd_count(client, mock_session):
         resp = await ac.get("/api/dora?period=30d")
 
     data = resp.json()
-    assert data["lead_time_median_s"] == 900.0
+    assert data["lead_time_avg_s"] == 900.0
 
 
 @pytest.mark.asyncio
-async def test_lead_time_median_even_count(client, mock_session):
-    """Median of [300, 600, 1200, 1500] = 900s (interpolated)."""
+async def test_lead_time_avg_even_count(client, mock_session):
+    """Average of [300, 600, 1200, 1500] = 900s."""
     null_result = MagicMock()
     null_result.scalar_one_or_none.return_value = None
 
@@ -91,7 +91,7 @@ async def test_lead_time_median_even_count(client, mock_session):
         resp = await ac.get("/api/dora?period=30d")
 
     data = resp.json()
-    assert data["lead_time_median_s"] == 900.0
+    assert data["lead_time_avg_s"] == 900.0
 
 
 # ── Change Failure Rate ──────────────────────────────────────────────
@@ -204,7 +204,7 @@ async def test_full_dora_scenario(client, mock_session):
     freq_result.scalar_one_or_none.return_value = 3.0 / 7.0  # 3 deploys in 7 days
 
     lt_result = MagicMock()
-    lt_result.scalar_one_or_none.return_value = 1200.0  # 20 min median lead time
+    lt_result.scalar_one_or_none.return_value = 1200.0  # 20 min avg lead time
 
     cfr_result = MagicMock()
     cfr_result.scalar_one_or_none.return_value = Decimal("0.3333")  # 1/3 failure rate
@@ -221,7 +221,7 @@ async def test_full_dora_scenario(client, mock_session):
     data = resp.json()
 
     assert abs(data["deploy_frequency_per_day"] - (3.0 / 7.0)) < 0.001
-    assert data["lead_time_median_s"] == 1200.0
+    assert data["lead_time_avg_s"] == 1200.0
     assert abs(data["change_failure_rate"] - 0.3333) < 0.0001
     assert data["mttr_s"] == 5400.0
     assert data["service"] == "orders"
