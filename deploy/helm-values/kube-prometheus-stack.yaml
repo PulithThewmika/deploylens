@@ -44,6 +44,7 @@ alertmanager:
   alertmanagerSpec:
     secrets:
       - deploylens-alertmanager-slack
+      - deploylens-alertmanager-webhook
     resources:
       requests:
         cpu: 50m
@@ -78,6 +79,13 @@ alertmanager:
               *Evidence:* {{ .CommonAnnotations.description }}
             color: >-
               {{ if eq .Status "resolved" }}good{{ else if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}
+        webhook_configs:
+          - url: http://host.docker.internal:8000/api/alerts/inbound
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/alertmanager/secrets/deploylens-alertmanager-webhook/token
 
 # ── kube-state-metrics (Kubernetes object metrics) ───────────────────
 kubeStateMetrics:
