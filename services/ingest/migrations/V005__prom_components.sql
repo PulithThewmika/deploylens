@@ -26,11 +26,6 @@ BEGIN
        SET prom_components = ARRAY[name]
      WHERE prom_components IS NULL;
 
-    -- Set sample-app to its actual Prometheus component labels
-    UPDATE services
-       SET prom_components = ARRAY['frontend', 'orders', 'payments']
-     WHERE name = 'sample-app';
-
     ALTER TABLE services
         ALTER COLUMN prom_components SET DEFAULT NULL;
 

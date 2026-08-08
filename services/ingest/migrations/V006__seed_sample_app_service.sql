@@ -34,6 +34,12 @@ BEGIN
             argocd_app = EXCLUDED.argocd_app,
             namespace  = EXCLUDED.namespace;
 
+    -- Set sample-app prom_components here (after row exists) rather than in
+    -- V005 where the UPDATE was a no-op on fresh databases (#159)
+    UPDATE services
+       SET prom_components = ARRAY['frontend', 'orders', 'payments']
+     WHERE name = 'sample-app';
+
     INSERT INTO schema_versions (version, description)
     VALUES ('V006', 'Seed sample-app service with repo <-> argocd_app mapping for CI/CD correlation');
 END $$;
