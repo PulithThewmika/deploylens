@@ -151,3 +151,23 @@ async def test_agent_loop_ignores_already_assessed():
 
     # Only the find-unassessed query, no processing
     assert mock_session.execute.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_process_deployment_empty_prom_components_preserved(mock_session):
+    """An explicit empty prom_components list is preserved, not replaced by [service_name]."""
+    row = _make_deploy_row(prom_components=[])
+
+    with patch("agent.run.assess_deployment", new_callable=AsyncMock) as mock_assess, \
+         patch("agent.run.fire_alert", new_callable=AsyncMock), \
+         patch("agent.run.get_session", new_callable=AsyncMock):
+
+        mock_assess.return_value = (95, "healthy", {
+            "penalties": {"error_rate": 0, "latency_p99": 0, "restarts": 0},
+            "raw_metrics": {},
+        })
+
+        await _process_deployment(mock_session, row)
+
+        call_args = mock_assess.call_args
+        assert call_args[0][2] == []
