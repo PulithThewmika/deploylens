@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
@@ -595,19 +596,28 @@ async def alerts_inbound(
             )
             continue
 
-        ends_at = alert.get("endsAt")
+        ends_at_raw = alert.get("endsAt")
+        ends_at = None
+        if ends_at_raw:
+            try:
+                ends_at = datetime.fromisoformat(ends_at_raw.replace("Z", "+00:00"))
+            except (ValueError, AttributeError):
+                logger.warning(
+                    "Could not parse endsAt=%r for deploy %s, falling back to now()",
+                    ends_at_raw, deploy_id,
+                )
 
         result = await session.execute(
             text("""
                 UPDATE alerts
-                SET resolved_at = COALESCE(resolved_at, now())
+                SET resolved_at = COALESCE(resolved_at, :ends_at, now())
                 WHERE deployment_id = :deploy_id
                   AND resolved_at IS NULL
                   AND service_id = (
                       SELECT id FROM services WHERE name = :service LIMIT 1
                   )
             """),
-            {"deploy_id": int(deploy_id), "service": service},
+            {"deploy_id": int(deploy_id), "service": service, "ends_at": ends_at},
         )
 
         if result.rowcount > 0:
