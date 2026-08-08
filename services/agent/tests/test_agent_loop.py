@@ -131,6 +131,8 @@ async def test_agent_loop_error_one_deployment_continues():
 
     # Both deployments were attempted (assess_deployment called twice)
     assert call_count == 2
+    # Session was rolled back after the first failure to clear aborted transaction state
+    mock_session.rollback.assert_awaited_once()
 
 
 @pytest.mark.asyncio
