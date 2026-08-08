@@ -7,6 +7,12 @@ on:
       - "sample-app/frontend/**"
       - "sample-app/orders/**"
       - "sample-app/payments/**"
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - "sample-app/frontend/**"
+      - "sample-app/orders/**"
+      - "sample-app/payments/**"
 
 permissions:
   contents: write
@@ -72,13 +78,14 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: sample-app/${{ matrix.service }}
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ steps.vars.outputs.short_sha }}
             ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:${{ github.sha }}
 
   update-manifests:
     needs: [detect-changes, build-and-push]
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,8 +111,8 @@ jobs:
           SERVICES: ${{ needs.detect-changes.outputs.services }}
         run: |
           SHORT_SHA="${SHA::7}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "Pulith Thewmika"
+          git config user.email "puliththewmika@gmail.com"
 
           changed=$(echo "$SERVICES" | jq -r '.[]' | paste -sd, -)
           git add sample-app/deploy/
@@ -116,3 +123,15 @@ jobs:
           [skip ci]
           Original-Commit: ${SHA}"
           git push
+          echo "BUMP_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Copy commit status to tag-bump commit
+        if: env.BUMP_SHA != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/statuses/${BUMP_SHA} \
+            -f state=success \
+            -f context="Sample App CI" \
+            -f description="All checks passed (status forwarded from ${GITHUB_SHA::7})" \
+            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
