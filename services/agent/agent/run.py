@@ -50,7 +50,8 @@ async def _find_unassessed_deployments(session):
     result = await session.execute(
         text("""
             SELECT d.id, d.service_id, d.finished_at, d.commit_sha,
-                   s.name AS service_name, s.namespace
+                   s.name AS service_name, s.namespace,
+                   s.prom_components
             FROM deployments d
             JOIN services s ON s.id = d.service_id
             WHERE d.status = 'deployed'
@@ -73,10 +74,11 @@ async def _process_deployment(session, row) -> None:
     service_id = row.service_id
     service_name = row.service_name
     namespace = row.namespace
+    components = row.prom_components or [service_name]
 
     logger.info(
-        "Processing deployment %d for %s (commit %s)",
-        deploy_id, service_name, (row.commit_sha or "unknown")[:7],
+        "Processing deployment %d for %s (commit %s, components=%s)",
+        deploy_id, service_name, (row.commit_sha or "unknown")[:7], components,
     )
 
     # Build a lightweight object with finished_at for assess_deployment
@@ -85,7 +87,7 @@ async def _process_deployment(session, row) -> None:
             self.id = r.id
             self.finished_at = r.finished_at
 
-    result = await assess_deployment(session, _Deploy(row), service_name, namespace)
+    result = await assess_deployment(session, _Deploy(row), components, namespace)
     if result is None:
         logger.warning("Could not assess deployment %d, skipping", deploy_id)
         return
