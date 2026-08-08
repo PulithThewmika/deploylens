@@ -11,7 +11,7 @@ global:
   slack_api_url_file: /etc/alertmanager/secrets/deploylens-alertmanager-slack/url
 
 route:
-  receiver: slack-deploylens
+  receiver: "null"
   group_by: ["alertname", "service"]
   group_wait: 30s
   group_interval: 5m
@@ -23,6 +23,7 @@ route:
       continue: false
 
 receivers:
+  - name: "null"
   - name: slack-deploylens
     slack_configs:
       - channel: "#deploylens-alerts"
