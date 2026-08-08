@@ -74,7 +74,7 @@ async def _process_deployment(session, row) -> None:
     service_id = row.service_id
     service_name = row.service_name
     namespace = row.namespace
-    components = row.prom_components or [service_name]
+    components = row.prom_components if row.prom_components is not None else [service_name]
 
     logger.info(
         "Processing deployment %d for %s (commit %s, components=%s)",

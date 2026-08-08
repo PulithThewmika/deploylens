@@ -63,7 +63,7 @@ async def reconcile_active_alerts(session: AsyncSession) -> int:
         service_name = row.service_name
         namespace = row.namespace
         deploy_id = row.deployment_id
-        components = row.prom_components or [service_name]
+        components = row.prom_components if row.prom_components is not None else [service_name]
         seen_alert_ids.add(alert_id)
 
         base = await _aggregate_metrics(components, namespace, BASELINE_WINDOW, baseline_end)
