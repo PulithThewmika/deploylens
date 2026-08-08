@@ -112,18 +112,40 @@ async def test_fire_alert_handles_alertmanager_down(mock_session):
 
 
 @pytest.mark.asyncio
-async def test_resolve_alert_updates_db_and_posts(mock_session, mock_alertmanager):
-    """resolve_alert updates resolved_at and sends endsAt to Alertmanager."""
-    await resolve_alert(mock_session, 42, "orders", 52)
+async def test_resolve_alert_updates_db_and_posts(mock_alertmanager):
+    """resolve_alert fetches severity, updates resolved_at, and sends matching payload."""
+    session = AsyncMock()
+    severity_row = MagicMock()
+    severity_row.severity = "warning"
+    severity_result = MagicMock()
+    severity_result.fetchone.return_value = severity_row
+    update_result = MagicMock()
+    session.execute.side_effect = [severity_result, update_result]
 
-    # DB update called
-    call_args = mock_session.execute.call_args
-    sql = str(call_args[0][0])
-    assert "UPDATE alerts" in sql
-    assert "resolved_at" in sql
+    await resolve_alert(session, 42, "orders", 52)
 
-    # Alertmanager resolution posted
+    # Two DB calls: SELECT severity + UPDATE resolved_at
+    assert session.execute.call_count == 2
+    update_sql = str(session.execute.call_args_list[1][0][0])
+    assert "UPDATE alerts" in update_sql
+    assert "resolved_at" in update_sql
+
+    # Alertmanager resolution posted with matching severity label
     mock_alertmanager.post.assert_called_once()
     post_args = mock_alertmanager.post.call_args
     payload = post_args[1]["json"]
     assert "endsAt" in payload[0]
+    assert payload[0]["labels"]["severity"] == "warning"
+    assert payload[0]["labels"]["alertname"] == "DeployDegradation"
+    assert payload[0]["labels"]["service"] == "orders"
+    assert payload[0]["labels"]["deploy_id"] == "52"
+
+
+@pytest.mark.asyncio
+async def test_resolve_payload_labels_match_fire_payload():
+    """Fire and resolve payloads must share the same label keys for fingerprint matching."""
+    fire_payload = _build_alert_payload("orders", 52, 68, "degraded", SAMPLE_DETAILS)
+    fire_labels = set(fire_payload[0]["labels"].keys())
+
+    resolve_labels = {"alertname", "service", "deploy_id", "severity"}
+    assert fire_labels == resolve_labels
