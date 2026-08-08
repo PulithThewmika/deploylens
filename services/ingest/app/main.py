@@ -8,13 +8,14 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator.metrics import Info
 from sqlalchemy import text
 
+from .auth import validate_auth_tokens
 from .db import async_session, engine
 from .routers import webhooks_github, webhooks_argocd, api, chat
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Verify DB is reachable on startup
+    validate_auth_tokens()
     async with engine.begin() as conn:
         await conn.execute(text("SELECT 1"))
     yield
