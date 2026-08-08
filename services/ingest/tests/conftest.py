@@ -8,6 +8,7 @@ import pytest
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 os.environ.setdefault("GITHUB_WEBHOOK_SECRET", "test-secret")
 os.environ.setdefault("ARGOCD_WEBHOOK_TOKEN", "test-token")
+os.environ.setdefault("ALERTMANAGER_WEBHOOK_TOKEN", "test-am-token")
 
 from app.main import app  # noqa: E402
 from app.db import get_session  # noqa: E402
@@ -44,6 +45,11 @@ def github_secret():
 @pytest.fixture
 def argocd_token():
     return os.environ["ARGOCD_WEBHOOK_TOKEN"]
+
+
+@pytest.fixture
+def alertmanager_token():
+    return os.environ["ALERTMANAGER_WEBHOOK_TOKEN"]
 
 
 @pytest.fixture
