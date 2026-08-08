@@ -156,36 +156,6 @@ class CompareResponse(BaseModel):
     metrics: list[CompareMetric] = []
 
 
-class DORADeployFrequency(BaseModel):
-    deploy_date: str
-    service_name: str
-    deploy_count: int
-
-
-class DORALeadTime(BaseModel):
-    service_name: str
-    avg_lead_time_seconds: float
-
-
-class DORAChangeFailureRate(BaseModel):
-    service_name: str
-    total_deploys: int
-    failed_deploys: int
-    failure_rate: float
-
-
-class DOAMTTR(BaseModel):
-    service_name: str
-    avg_mttr_seconds: float
-
-
-class DORAResponse(BaseModel):
-    deploy_frequency: list[DORADeployFrequency] = []
-    lead_time: list[DORALeadTime] = []
-    change_failure_rate: list[DORAChangeFailureRate] = []
-    mttr: list[DOAMTTR] = []
-
-
 class DORAMetricsResponse(BaseModel):
     """Unified DORA metrics response matching MCP get_dora_metrics output."""
     deploy_frequency_per_day: float | None = None
