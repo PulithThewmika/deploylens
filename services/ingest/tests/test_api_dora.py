@@ -28,7 +28,7 @@ async def test_dora_returns_all_four_metrics(client, mock_session):
     assert resp.status_code == 200
     data = resp.json()
     assert data["deploy_frequency_per_day"] == 2.5
-    assert data["lead_time_median_s"] == 3600.0
+    assert data["lead_time_avg_s"] == 3600.0
     assert data["change_failure_rate"] == 0.15
     assert data["mttr_s"] == 1800.0
     assert data["period"] == "30d"
@@ -66,6 +66,6 @@ async def test_dora_all_nulls(client, mock_session):
     assert resp.status_code == 200
     data = resp.json()
     assert data["deploy_frequency_per_day"] is None
-    assert data["lead_time_median_s"] is None
+    assert data["lead_time_avg_s"] is None
     assert data["change_failure_rate"] is None
     assert data["mttr_s"] is None

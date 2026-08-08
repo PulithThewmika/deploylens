@@ -364,7 +364,7 @@ async def get_dora_metrics(
     if service:
         params["service"] = service
 
-    # Deploy frequency: deployments per day in period
+    # Deploy frequency: deployments per day in period (dora_deploy_frequency view)
     freq_result = await session.execute(
         text(f"""
             SELECT COALESCE(SUM(deploy_count)::float / NULLIF(:days, 0), NULL)
@@ -376,56 +376,42 @@ async def get_dora_metrics(
     )
     freq = freq_result.scalar_one_or_none()
 
-    # Lead time: median (percentile_cont 0.5)
+    # Lead time: average seconds from commit to deploy (dora_lead_time view)
     lt_result = await session.execute(
         text(f"""
-            SELECT percentile_cont(0.5) WITHIN GROUP (
-                ORDER BY EXTRACT(EPOCH FROM (d.finished_at - d.commit_at))
-            )
-            FROM deployments d
-            JOIN services s ON s.id = d.service_id
-            WHERE d.status IN ('deployed', 'assessed')
-              AND d.commit_at IS NOT NULL
-              AND d.finished_at IS NOT NULL
-              AND d.finished_at >= now() - :days * interval '1 day'
-              {"AND s.name = :service" if service else ""}
+            SELECT AVG(lead_time_seconds)
+            FROM dora_lead_time
+            WHERE finished_at >= now() - :days * interval '1 day'
+            {svc_filter}
         """),
         params,
     )
-    lead_time_median = lt_result.scalar_one_or_none()
+    lead_time_avg = lt_result.scalar_one_or_none()
 
-    # Change failure rate
+    # Change failure rate (dora_change_failure_rate view)
     cfr_result = await session.execute(
         text(f"""
-            SELECT
-                ROUND(
-                    COUNT(*) FILTER (
-                        WHERE d.status IN ('build_failed', 'sync_failed')
-                           OR ha.verdict IN ('failed', 'degraded')
-                    )::numeric / NULLIF(COUNT(*), 0),
-                    4
-                )
-            FROM deployments d
-            JOIN services s ON s.id = d.service_id
-            LEFT JOIN health_assessments ha ON ha.deployment_id = d.id
-            WHERE d.status IN ('deployed', 'assessed', 'build_failed', 'sync_failed')
-              AND d.started_at >= now() - :days * interval '1 day'
-              {"AND s.name = :service" if service else ""}
+            SELECT ROUND(
+                COUNT(*) FILTER (WHERE is_failure)::numeric
+                / NULLIF(COUNT(*), 0),
+                4
+            )
+            FROM dora_change_failure_rate
+            WHERE started_at >= now() - :days * interval '1 day'
+            {svc_filter}
         """),
         params,
     )
     cfr = cfr_result.scalar_one_or_none()
     cfr_float = float(cfr) if cfr is not None else None
 
-    # MTTR: average resolved alert duration
+    # MTTR: average resolved alert duration (dora_mttr view)
     mttr_result = await session.execute(
         text(f"""
-            SELECT AVG(EXTRACT(EPOCH FROM (a.resolved_at - a.fired_at)))
-            FROM alerts a
-            JOIN services s ON s.id = a.service_id
-            WHERE a.resolved_at IS NOT NULL
-              AND a.fired_at >= now() - :days * interval '1 day'
-              {"AND s.name = :service" if service else ""}
+            SELECT AVG(mttr_seconds)
+            FROM dora_mttr
+            WHERE fired_at >= now() - :days * interval '1 day'
+            {svc_filter}
         """),
         params,
     )
@@ -433,7 +419,7 @@ async def get_dora_metrics(
 
     return DORAMetricsResponse(
         deploy_frequency_per_day=freq,
-        lead_time_median_s=lead_time_median,
+        lead_time_avg_s=lead_time_avg,
         change_failure_rate=cfr_float,
         mttr_s=mttr,
         period=period,
