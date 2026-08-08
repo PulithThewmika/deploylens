@@ -10,14 +10,36 @@ from agent.reconciliation import reconcile_active_alerts, _recovery_counters
 
 
 def _make_alert_row(alert_id=1, deployment_id=1, service_id=1,
-                    service_name="orders", namespace="deploylens"):
+                    service_name="orders", namespace="deploylens",
+                    prom_components=None):
     row = MagicMock()
     row.id = alert_id
     row.deployment_id = deployment_id
     row.service_id = service_id
     row.service_name = service_name
     row.namespace = namespace
+    row.prom_components = prom_components
     return row
+
+
+def _healthy_aggregated():
+    """Baseline and post metrics that produce a healthy score (>= 80)."""
+    return {
+        "error_rate": 0.005,
+        "latency_p99": 110.0,
+        "restarts": 0.0,
+        "request_rate": 10.0,
+    }
+
+
+def _degraded_aggregated():
+    """Post metrics that produce a degraded/failed score (< 80)."""
+    return {
+        "error_rate": 0.08,
+        "latency_p99": 500.0,
+        "restarts": 5.0,
+        "request_rate": 10.0,
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -45,17 +67,15 @@ async def test_no_active_alerts(mock_session):
 
 @pytest.mark.asyncio
 async def test_resolve_after_two_healthy_cycles(mock_session):
-    """Alert resolves after 2 consecutive cycles where metrics are healthy."""
+    """Alert resolves after 2 consecutive cycles where recomputed score >= 80."""
     result = MagicMock()
     result.fetchall.return_value = [_make_alert_row(alert_id=10)]
     mock_session.execute.return_value = result
 
-    with patch("agent.reconciliation.promql") as mock_promql, \
+    with patch("agent.reconciliation._aggregate_metrics", new_callable=AsyncMock) as mock_agg, \
          patch("agent.reconciliation.resolve_alert", new_callable=AsyncMock) as mock_resolve:
 
-        mock_promql.query_error_rate = AsyncMock(return_value=0.0)
-        mock_promql.query_latency_p99 = AsyncMock(return_value=100.0)
-        mock_promql.query_restarts = AsyncMock(return_value=0.0)
+        mock_agg.return_value = _healthy_aggregated()
 
         # Cycle 1: healthy but not yet resolved (need 2 consecutive)
         resolved = await reconcile_active_alerts(mock_session)
@@ -71,27 +91,51 @@ async def test_resolve_after_two_healthy_cycles(mock_session):
 
 
 @pytest.mark.asyncio
+async def test_resolve_with_realistic_nonzero_metrics(mock_session):
+    """Alert resolves when metrics are non-zero but within healthy thresholds.
+
+    This is the regression test for bug #135: previously, any non-zero error
+    rate or restart count would pin the alert open forever because the
+    reconciliation compared against a hardcoded 0.0 baseline.
+    """
+    result = MagicMock()
+    result.fetchall.return_value = [_make_alert_row(alert_id=15)]
+    mock_session.execute.return_value = result
+
+    with patch("agent.reconciliation._aggregate_metrics", new_callable=AsyncMock) as mock_agg, \
+         patch("agent.reconciliation.resolve_alert", new_callable=AsyncMock) as mock_resolve:
+
+        base = {"error_rate": 0.002, "latency_p99": 100.0, "restarts": 0.0, "request_rate": 12.0}
+        post = {"error_rate": 0.003, "latency_p99": 105.0, "restarts": 0.0, "request_rate": 11.0}
+        mock_agg.side_effect = [base, post, base, post]
+
+        resolved = await reconcile_active_alerts(mock_session)
+        assert resolved == 0
+        assert _recovery_counters[15] == 1
+
+        resolved = await reconcile_active_alerts(mock_session)
+        assert resolved == 1
+        mock_resolve.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_flapping_resets_counter(mock_session):
     """If metrics recover then degrade again, counter resets."""
     result = MagicMock()
     result.fetchall.return_value = [_make_alert_row(alert_id=20)]
     mock_session.execute.return_value = result
 
-    with patch("agent.reconciliation.promql") as mock_promql, \
+    with patch("agent.reconciliation._aggregate_metrics", new_callable=AsyncMock) as mock_agg, \
          patch("agent.reconciliation.resolve_alert", new_callable=AsyncMock) as mock_resolve:
 
         # Cycle 1: healthy
-        mock_promql.query_error_rate = AsyncMock(return_value=0.0)
-        mock_promql.query_latency_p99 = AsyncMock(return_value=100.0)
-        mock_promql.query_restarts = AsyncMock(return_value=0.0)
-
+        mock_agg.return_value = _healthy_aggregated()
         resolved = await reconcile_active_alerts(mock_session)
         assert resolved == 0
         assert _recovery_counters[20] == 1
 
-        # Cycle 2: degraded again (high error rate)
-        mock_promql.query_error_rate = AsyncMock(return_value=0.08)
-
+        # Cycle 2: degraded again
+        mock_agg.side_effect = [_healthy_aggregated(), _degraded_aggregated()]
         resolved = await reconcile_active_alerts(mock_session)
         assert resolved == 0
         assert _recovery_counters[20] == 0
@@ -105,12 +149,12 @@ async def test_still_degraded_stays_at_zero(mock_session):
     result.fetchall.return_value = [_make_alert_row(alert_id=30)]
     mock_session.execute.return_value = result
 
-    with patch("agent.reconciliation.promql") as mock_promql, \
+    with patch("agent.reconciliation._aggregate_metrics", new_callable=AsyncMock) as mock_agg, \
          patch("agent.reconciliation.resolve_alert", new_callable=AsyncMock) as mock_resolve:
 
-        mock_promql.query_error_rate = AsyncMock(return_value=0.1)
-        mock_promql.query_latency_p99 = AsyncMock(return_value=500.0)
-        mock_promql.query_restarts = AsyncMock(return_value=5.0)
+        base = _healthy_aggregated()
+        post = _degraded_aggregated()
+        mock_agg.side_effect = [base, post, base, post]
 
         resolved = await reconcile_active_alerts(mock_session)
         assert resolved == 0
@@ -132,21 +176,17 @@ async def test_multiple_alerts_independent(mock_session):
     ]
     mock_session.execute.return_value = result
 
-    call_count = 0
+    async def agg_side_effect(components, namespace, window, timestamp):
+        if components == ["orders"]:
+            return _healthy_aggregated()
+        # payments: baseline healthy, observation degraded → penalty fires
+        if window == "30m":
+            return _healthy_aggregated()
+        return _degraded_aggregated()
 
-    async def error_rate_side_effect(service, namespace, window, time):
-        nonlocal call_count
-        call_count += 1
-        if service == "orders":
-            return 0.0
-        return 0.1
-
-    with patch("agent.reconciliation.promql") as mock_promql, \
+    with patch("agent.reconciliation._aggregate_metrics", new_callable=AsyncMock,
+               side_effect=agg_side_effect), \
          patch("agent.reconciliation.resolve_alert", new_callable=AsyncMock):
-
-        mock_promql.query_error_rate = AsyncMock(side_effect=error_rate_side_effect)
-        mock_promql.query_latency_p99 = AsyncMock(return_value=100.0)
-        mock_promql.query_restarts = AsyncMock(return_value=0.0)
 
         await reconcile_active_alerts(mock_session)
 

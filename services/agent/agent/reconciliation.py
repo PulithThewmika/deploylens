@@ -1,36 +1,28 @@
 """Alert resolution reconciliation.
 
 Checks active (unresolved) alerts each agent cycle. For each, re-queries
-current Prometheus metrics and computes whether the service has recovered.
-Resolves the alert only after 2 consecutive healthy cycles to avoid flapping.
+current Prometheus metrics with proper baseline/observation windows and
+computes a health score. Resolves the alert only after 2 consecutive
+healthy cycles (score >= 80) to avoid flapping.
 """
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from . import promql
 from .alerting import resolve_alert
-from .config import OBSERVATION_WINDOW
-from .health_score import penalty
+from .config import BASELINE_WINDOW, BASELINE_WINDOW_SECONDS, OBSERVATION_WINDOW, OBSERVATION_WINDOW_SECONDS
+from .health_score import compute_health_score, _aggregate_metrics
 
 logger = logging.getLogger("deploylens.agent.reconciliation")
 
+HEALTHY_THRESHOLD = 80
+
 _recovery_counters: dict[int, int] = {}
-
-
-def _is_recovered(error_rate: float | None, latency_base: float | None,
-                  latency_post: float | None, restarts: float | None) -> bool:
-    """Check if all metric penalties are zero (i.e. service is healthy)."""
-    er_penalty = penalty(0.0, error_rate, "error_rate") if error_rate is not None else 0.0
-    lat_penalty = penalty(latency_base, latency_post, "latency_p99") if (latency_base is not None and latency_post is not None) else 0.0
-    rst_penalty = penalty(0.0, restarts, "restarts") if restarts is not None else 0.0
-
-    return er_penalty == 0.0 and lat_penalty == 0.0 and rst_penalty == 0.0
 
 
 async def _fetch_active_alerts(session: AsyncSession):
@@ -38,7 +30,8 @@ async def _fetch_active_alerts(session: AsyncSession):
     result = await session.execute(
         text("""
             SELECT a.id, a.deployment_id, a.service_id,
-                   s.name AS service_name, s.namespace
+                   s.name AS service_name, s.namespace,
+                   s.prom_components
             FROM alerts a
             JOIN services s ON s.id = a.service_id
             WHERE a.resolved_at IS NULL
@@ -61,6 +54,7 @@ async def reconcile_active_alerts(session: AsyncSession) -> int:
     logger.info("Reconciling %d active alert(s)", len(rows))
 
     now = datetime.now(timezone.utc)
+    baseline_end = now - timedelta(seconds=OBSERVATION_WINDOW_SECONDS)
     resolved_count = 0
     seen_alert_ids = set()
 
@@ -69,28 +63,31 @@ async def reconcile_active_alerts(session: AsyncSession) -> int:
         service_name = row.service_name
         namespace = row.namespace
         deploy_id = row.deployment_id
+        components = row.prom_components or [service_name]
         seen_alert_ids.add(alert_id)
 
-        error_rate = await promql.query_error_rate(
-            service_name, namespace, OBSERVATION_WINDOW, now
-        )
-        latency_post = await promql.query_latency_p99(
-            service_name, namespace, OBSERVATION_WINDOW, now
-        )
-        latency_base = await promql.query_latency_p99(
-            service_name, namespace, OBSERVATION_WINDOW, now
-        )
-        restarts = await promql.query_restarts(
-            service_name, namespace, OBSERVATION_WINDOW, now
-        )
+        base = await _aggregate_metrics(components, namespace, BASELINE_WINDOW, baseline_end)
+        post = await _aggregate_metrics(components, namespace, OBSERVATION_WINDOW, now)
 
-        recovered = _is_recovered(error_rate, latency_base, latency_post, restarts)
+        metrics = {
+            "error_rate_base": base["error_rate"],
+            "error_rate_post": post["error_rate"],
+            "latency_p99_base_ms": base["latency_p99"],
+            "latency_p99_post_ms": post["latency_p99"],
+            "restarts_base": base["restarts"],
+            "restarts_post": post["restarts"],
+            "request_rate_base": base["request_rate"],
+            "request_rate_post": post["request_rate"],
+        }
+
+        score, verdict, _ = compute_health_score(metrics)
+        recovered = score >= HEALTHY_THRESHOLD
 
         if recovered:
             _recovery_counters[alert_id] = _recovery_counters.get(alert_id, 0) + 1
             logger.info(
-                "Alert #%d (deploy %d, %s): metrics healthy, recovery count %d/2",
-                alert_id, deploy_id, service_name, _recovery_counters[alert_id],
+                "Alert #%d (deploy %d, %s): score %d/100 — healthy, recovery count %d/2",
+                alert_id, deploy_id, service_name, score, _recovery_counters[alert_id],
             )
 
             if _recovery_counters[alert_id] >= 2:
@@ -104,8 +101,8 @@ async def reconcile_active_alerts(session: AsyncSession) -> int:
         else:
             if alert_id in _recovery_counters:
                 logger.info(
-                    "Alert #%d (deploy %d, %s): metrics still degraded, resetting recovery counter",
-                    alert_id, deploy_id, service_name,
+                    "Alert #%d (deploy %d, %s): score %d/100 — still degraded, resetting recovery counter",
+                    alert_id, deploy_id, service_name, score,
                 )
             _recovery_counters[alert_id] = 0
 
