@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main, dev]
+
+jobs:
+  test-ingest:
+    name: Ingest Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ingest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run tests
+        env:
+          DATABASE_URL: "sqlite+aiosqlite://"
+          GITHUB_WEBHOOK_SECRET: "test-secret"
+          ARGOCD_WEBHOOK_TOKEN: "test-token"
+          ALERTMANAGER_WEBHOOK_TOKEN: "test-token"
+        run: pytest tests/ -v
+
+  test-agent:
+    name: Agent Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run tests
+        run: pytest tests/ -v
