@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger("deploylens.api")
 
+from ..auth import verify_alertmanager_token
 from ..db import get_session
 from ..schemas.responses import (
     ServiceWithStatusResponse,
@@ -565,7 +566,7 @@ async def compare_deployments(
     )
 
 
-@router.post("/alerts/inbound")
+@router.post("/alerts/inbound", dependencies=[Depends(verify_alertmanager_token)])
 async def alerts_inbound(
     request: Request,
     session: AsyncSession = Depends(get_session),
