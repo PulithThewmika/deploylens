@@ -596,6 +596,15 @@ async def alerts_inbound(
             )
             continue
 
+        try:
+            deploy_id_int = int(deploy_id)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Resolved alert has non-numeric deploy_id label %r, skipping",
+                deploy_id,
+            )
+            continue
+
         ends_at_raw = alert.get("endsAt")
         ends_at = None
         if ends_at_raw:
@@ -617,7 +626,7 @@ async def alerts_inbound(
                       SELECT id FROM services WHERE name = :service LIMIT 1
                   )
             """),
-            {"deploy_id": int(deploy_id), "service": service, "ends_at": ends_at},
+            {"deploy_id": deploy_id_int, "service": service, "ends_at": ends_at},
         )
 
         if result.rowcount > 0:
