@@ -25,6 +25,10 @@ import {
   queryMetricsSchema,
   queryMetrics,
 } from "./tools/query_metrics.js";
+import {
+  queryLogsSchema,
+  queryLogs,
+} from "./tools/query_logs.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -74,14 +78,9 @@ server.tool(
 // ── Tool: query_logs ────────────────────────────────────────────
 server.tool(
   "query_logs",
-  "Query application logs from Loki using LogQL",
-  {
-    query: z.string().describe("LogQL expression"),
-    start: z.string().describe("Start time (RFC3339 or relative)"),
-    end: z.string().optional().describe("End time (RFC3339 or 'now')"),
-    limit: z.number().int().min(1).max(5000).default(500).describe("Max log lines"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "Query application logs from Loki by service name with optional keyword and log-level filters. Returns timestamped log lines, the LogQL query executed, and a summary with level breakdown.",
+  queryLogsSchema,
+  async (input) => queryLogs(input),
 );
 
 // ── Tool: get_dora_metrics ──────────────────────────────────────
