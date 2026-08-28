@@ -1,8 +1,10 @@
 import { z } from "zod";
 import { queryRange, type LokiStream } from "../clients/loki.js";
-import { resolveTimestamp } from "./query_metrics.js";
+import { resolveTimestamp, sanitizeLabel } from "./query_metrics.js";
 
-const LOG_LEVELS = ["error", "warn", "info"] as const;
+const LOG_LEVELS = [
+  "error", "warn", "info", "debug", "trace", "fatal", "panic",
+] as const;
 
 export const queryLogsSchema = {
   service: z.string().describe("Service name (matches the 'app' label in Loki)"),
@@ -13,7 +15,7 @@ export const queryLogsSchema = {
   level: z
     .enum(LOG_LEVELS)
     .optional()
-    .describe("Optional log level filter: error, warn, info"),
+    .describe("Optional log level filter (case-insensitive match)"),
   from: z
     .string()
     .describe("Start time — relative (e.g. '-1h', '-30m') or ISO8601 timestamp"),
@@ -32,24 +34,20 @@ export const queryLogsSchema = {
 
 // ── LogQL construction ─────────────────────────────────────────
 
-function sanitizeLogQL(value: string): string {
-  return value.replace(/[\\"]/g, (m) => "\\" + m);
-}
-
-function buildLogQL(
+export function buildLogQL(
   service: string,
   keyword?: string,
   level?: string,
 ): string {
-  const svc = sanitizeLogQL(service);
+  const svc = sanitizeLabel(service);
   let query = `{app="${svc}"}`;
 
   if (level) {
-    query += ` |= "${level}"`;
+    query += ` |~ "(?i)${level}"`;
   }
 
   if (keyword) {
-    const kw = sanitizeLogQL(keyword);
+    const kw = sanitizeLabel(keyword);
     query += ` |= "${kw}"`;
   }
 
@@ -66,7 +64,7 @@ interface LogEntry {
 
 const LEVEL_RE = /\b(error|warn(?:ing)?|info|debug|trace|fatal|panic)\b/i;
 
-function detectLevel(line: string): string {
+export function detectLevel(line: string): string {
   const match = line.match(LEVEL_RE);
   if (!match) return "unknown";
   const lvl = match[1].toLowerCase();
@@ -79,7 +77,7 @@ function formatResults(streams: LokiStream[], limit: number): LogEntry[] {
 
   for (const stream of streams) {
     for (const [tsNano, line] of stream.values) {
-      const epochMs = Math.floor(parseInt(tsNano, 10) / 1_000_000);
+      const epochMs = Number(BigInt(tsNano) / 1_000_000n);
       entries.push({
         ts: new Date(epochMs).toISOString(),
         level: detectLevel(line),
