@@ -17,6 +17,10 @@ describe("sanitizeLabel", () => {
   it("passes clean strings through", () => {
     expect(sanitizeLabel("orders")).toBe("orders");
   });
+
+  it("does not escape single quotes (PromQL uses double-quoted matchers)", () => {
+    expect(sanitizeLabel("it's-live")).toBe("it's-live");
+  });
 });
 
 describe("buildPromQL", () => {
