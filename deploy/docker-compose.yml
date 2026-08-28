@@ -65,6 +65,23 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── MCP Server ─────────────────────────────────────────────────
+  # Model Context Protocol server exposing deployment, metrics,
+  # and log tools for natural-language incident investigation.
+  mcp-server:
+    build:
+      context: ../services/mcp-server
+      dockerfile: Dockerfile
+    container_name: deploylens-mcp
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
+      LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ── Grafana ────────────────────────────────────────────────────
   # Visualization layer — provisioned datasources (Prometheus, Loki,
   # PostgreSQL) and dashboards load automatically from mounted YAML.
