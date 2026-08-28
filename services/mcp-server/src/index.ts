@@ -17,6 +17,10 @@ import {
   getDeployHealthSchema,
   getDeployHealth,
 } from "./tools/get_deploy_health.js";
+import {
+  compareDeploysSchema,
+  compareDeploys,
+} from "./tools/compare_deploys.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -50,12 +54,9 @@ server.tool(
 // ── Tool: compare_deploys ───────────────────────────────────────
 server.tool(
   "compare_deploys",
-  "Compare two deployments side by side — status, health score, and metrics",
-  {
-    deployment_id_a: z.number().int().describe("First deployment ID"),
-    deployment_id_b: z.number().int().describe("Second deployment ID"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "Compare two deployments side by side — status, health score, and live Prometheus metrics (error rate, p99 latency, restarts) with change percentages",
+  compareDeploysSchema,
+  async (input) => compareDeploys(input),
 );
 
 // ── Tool: query_metrics ─────────────────────────────────────────
