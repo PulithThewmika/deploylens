@@ -1,34 +1,8 @@
 import { describe, it, expect } from "vitest";
-
-// We need to test the pure functions. Since they're not exported,
-// we test them indirectly through the module's behavior by importing
-// and testing the exported pieces. For now, we test the LogQL builder
-// and log parsing logic by extracting them.
-
-// Re-implement the pure functions here for unit testing since the
-// module's internal functions are private. In a future refactor
-// (E10-T8), these will be extracted to a shared module.
+import { buildLogQL, detectLevel } from "./query_logs.js";
+import { sanitizeLabel } from "./query_metrics.js";
 
 describe("LogQL construction", () => {
-  function sanitizeLogQL(value: string): string {
-    return value.replace(/[\\"]/g, (m) => "\\" + m);
-  }
-
-  function buildLogQL(
-    service: string,
-    keyword?: string,
-    level?: string,
-  ): string {
-    const svc = sanitizeLogQL(service);
-    let query = `{app="${svc}"}`;
-    if (level) query += ` |= "${level}"`;
-    if (keyword) {
-      const kw = sanitizeLogQL(keyword);
-      query += ` |= "${kw}"`;
-    }
-    return query;
-  }
-
   it("builds basic service selector", () => {
     const q = buildLogQL("orders");
     expect(q).toBe('{app="orders"}');
@@ -39,14 +13,14 @@ describe("LogQL construction", () => {
     expect(q).toBe('{app="orders"} |= "timeout"');
   });
 
-  it("adds level filter", () => {
+  it("adds level filter with case-insensitive regex", () => {
     const q = buildLogQL("orders", undefined, "error");
-    expect(q).toBe('{app="orders"} |= "error"');
+    expect(q).toBe('{app="orders"} |~ "(?i)error"');
   });
 
   it("adds both level and keyword filters", () => {
     const q = buildLogQL("payments", "connection refused", "error");
-    expect(q).toBe('{app="payments"} |= "error" |= "connection refused"');
+    expect(q).toBe('{app="payments"} |~ "(?i)error" |= "connection refused"');
   });
 
   it("escapes double quotes in service name", () => {
@@ -58,19 +32,25 @@ describe("LogQL construction", () => {
     const q = buildLogQL("orders", 'key="value"');
     expect(q).toBe('{app="orders"} |= "key=\\"value\\""');
   });
+
+  it("escapes backslash in service name via sanitizeLabel", () => {
+    const q = buildLogQL("orders\\malicious");
+    expect(q).toBe('{app="orders\\\\malicious"}');
+  });
+});
+
+describe("sanitizeLabel (reused from query_metrics)", () => {
+  it("escapes backslash and double quotes", () => {
+    expect(sanitizeLabel('foo"bar')).toBe('foo\\"bar');
+    expect(sanitizeLabel("foo\\bar")).toBe("foo\\\\bar");
+  });
+
+  it("passes clean strings through", () => {
+    expect(sanitizeLabel("orders")).toBe("orders");
+  });
 });
 
 describe("level detection", () => {
-  const LEVEL_RE = /\b(error|warn(?:ing)?|info|debug|trace|fatal|panic)\b/i;
-
-  function detectLevel(line: string): string {
-    const match = line.match(LEVEL_RE);
-    if (!match) return "unknown";
-    const lvl = match[1].toLowerCase();
-    if (lvl === "warning") return "warn";
-    return lvl;
-  }
-
   it("detects error level", () => {
     expect(detectLevel("2024-01-01 ERROR connection failed")).toBe("error");
   });
@@ -97,11 +77,18 @@ describe("level detection", () => {
 });
 
 describe("log entry formatting", () => {
-  it("converts Loki nanosecond timestamps to ISO8601", () => {
+  it("converts Loki nanosecond timestamps to ISO8601 with BigInt precision", () => {
     const tsNano = "1700000000000000000";
-    const epochMs = Math.floor(parseInt(tsNano, 10) / 1_000_000);
+    const epochMs = Number(BigInt(tsNano) / 1_000_000n);
     const iso = new Date(epochMs).toISOString();
     expect(iso).toBe("2023-11-14T22:13:20.000Z");
+  });
+
+  it("preserves sub-second precision in nanosecond timestamps", () => {
+    const tsNano = "1700000000123456789";
+    const epochMs = Number(BigInt(tsNano) / 1_000_000n);
+    const iso = new Date(epochMs).toISOString();
+    expect(iso).toBe("2023-11-14T22:13:20.123Z");
   });
 
   it("caps entries at limit", () => {
