@@ -5,6 +5,10 @@ import { z } from "zod";
 import * as postgres from "./clients/postgres.js";
 import * as prometheus from "./clients/prometheus.js";
 import * as loki from "./clients/loki.js";
+import {
+  listDeploymentsSchema,
+  listDeployments,
+} from "./tools/list_deployments.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -14,13 +18,9 @@ const server = new McpServer({
 // ── Tool: list_deployments ──────────────────────────────────────
 server.tool(
   "list_deployments",
-  "List recent deployments, optionally filtered by service name or status",
-  {
-    service: z.string().optional().describe("Filter by service name"),
-    status: z.string().optional().describe("Filter by deployment status"),
-    limit: z.number().int().min(1).max(100).default(20).describe("Max results"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "List recent deployments, optionally filtered by service name or status. Returns a summary highlighting any unhealthy deploys.",
+  listDeploymentsSchema,
+  async (input) => listDeployments(input),
 );
 
 // ── Tool: get_deployment ────────────────────────────────────────
