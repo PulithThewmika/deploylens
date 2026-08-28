@@ -9,6 +9,14 @@ import {
   listDeploymentsSchema,
   listDeployments,
 } from "./tools/list_deployments.js";
+import {
+  getDeploymentSchema,
+  getDeployment,
+} from "./tools/get_deployment.js";
+import {
+  getDeployHealthSchema,
+  getDeployHealth,
+} from "./tools/get_deploy_health.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -26,21 +34,17 @@ server.tool(
 // ── Tool: get_deployment ────────────────────────────────────────
 server.tool(
   "get_deployment",
-  "Get full details of a specific deployment by ID",
-  {
-    deployment_id: z.number().int().describe("Deployment ID"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "Get full details of a specific deployment by ID, including service info, pipeline timeline, and health assessment",
+  getDeploymentSchema,
+  async (input) => getDeployment(input),
 );
 
 // ── Tool: get_deploy_health ─────────────────────────────────────
 server.tool(
   "get_deploy_health",
-  "Get the health assessment for a deployment, including score breakdown",
-  {
-    deployment_id: z.number().int().describe("Deployment ID"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "Get the health assessment for a deployment with score breakdown and metric evidence (error rate, latency, restarts)",
+  getDeployHealthSchema,
+  async (input) => getDeployHealth(input),
 );
 
 // ── Tool: compare_deploys ───────────────────────────────────────
