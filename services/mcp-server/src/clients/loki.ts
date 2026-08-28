@@ -18,12 +18,14 @@ export async function queryRange(
   start: string,
   end: string,
   limit = 1000,
+  direction: "forward" | "backward" = "forward",
 ): Promise<LokiStream[]> {
   const params = new URLSearchParams({
     query,
     start,
     end,
     limit: String(limit),
+    direction,
   });
 
   const url = `${LOKI_URL}/loki/api/v1/query_range?${params}`;
