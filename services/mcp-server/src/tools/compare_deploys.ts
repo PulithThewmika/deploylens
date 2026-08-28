@@ -36,7 +36,7 @@ interface MetricDiff {
 }
 
 function sanitizeLabel(value: string): string {
-  return value.replace(/[\\"'\n\r]/g, (m) => "\\" + m);
+  return value.replace(/[\\"\n\r]/g, (m) => "\\" + m);
 }
 
 function buildPromQL(
