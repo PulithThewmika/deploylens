@@ -21,6 +21,10 @@ import {
   compareDeploysSchema,
   compareDeploys,
 } from "./tools/compare_deploys.js";
+import {
+  queryMetricsSchema,
+  queryMetrics,
+} from "./tools/query_metrics.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -62,14 +66,9 @@ server.tool(
 // ── Tool: query_metrics ─────────────────────────────────────────
 server.tool(
   "query_metrics",
-  "Run a PromQL query against Prometheus and return results",
-  {
-    query: z.string().describe("PromQL expression"),
-    start: z.string().optional().describe("Range start (RFC3339 or relative like '1h')"),
-    end: z.string().optional().describe("Range end (RFC3339 or 'now')"),
-    step: z.string().optional().describe("Step interval (e.g. '15s', '1m')"),
-  },
-  async () => ({ content: [{ type: "text", text: "TODO: implement" }] }),
+  "Query Prometheus metrics for a service by intent (metric enum), not raw PromQL. Returns time series, unit, the actual PromQL executed, and a human-readable summary.",
+  queryMetricsSchema,
+  async (input) => queryMetrics(input),
 );
 
 // ── Tool: query_logs ────────────────────────────────────────────
