@@ -44,11 +44,11 @@ const METRIC_UNITS: Record<MetricName, string> = {
 
 // ── PromQL builders (doc 05 canonical) ─────────────────────────
 
-function sanitizeLabel(value: string): string {
+export function sanitizeLabel(value: string): string {
   return value.replace(/[\\"'\n\r]/g, (m) => "\\" + m);
 }
 
-function buildPromQL(
+export function buildPromQL(
   metric: MetricName,
   service: string,
   namespace: string,
@@ -99,7 +99,7 @@ function buildPromQL(
 
 const RELATIVE_RE = /^-(\d+)([smhd])$/;
 
-function parseRelativeSeconds(rel: string): number | null {
+export function parseRelativeSeconds(rel: string): number | null {
   const match = rel.match(RELATIVE_RE);
   if (!match) return null;
   const val = parseInt(match[1], 10);
@@ -112,7 +112,7 @@ function parseRelativeSeconds(rel: string): number | null {
   }
 }
 
-function resolveTimestamp(input: string, nowEpoch: number): string {
+export function resolveTimestamp(input: string, nowEpoch: number): string {
   if (input === "now") return nowEpoch.toString();
 
   const relSec = parseRelativeSeconds(input);
@@ -124,7 +124,7 @@ function resolveTimestamp(input: string, nowEpoch: number): string {
   throw new Error(`Cannot parse time string: "${input}"`);
 }
 
-function autoStep(startEpoch: number, endEpoch: number): string {
+export function autoStep(startEpoch: number, endEpoch: number): string {
   const range = endEpoch - startEpoch;
   if (range <= 3600) return "15s";
   if (range <= 21600) return "1m";
@@ -147,7 +147,7 @@ interface DataPoint {
   v: number;
 }
 
-function formatResults(
+export function formatResults(
   results: PromRangeResult[],
   metric: MetricName,
 ): DataPoint[] {
