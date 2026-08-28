@@ -36,7 +36,7 @@ interface MetricDiff {
 }
 
 function sanitizeLabel(value: string): string {
-  return value.replace(/[\\"'\n\r]/g, (m) => "\\" + m);
+  return value.replace(/[\\"\n\r]/g, (m) => "\\" + m);
 }
 
 function buildPromQL(
@@ -90,18 +90,11 @@ async function fetchMetrics(
 ): Promise<MetricValues> {
   const ts = (finishedAt.getTime() / 1000 + parseWindowSeconds(OBSERVATION_WINDOW)).toString();
 
-  const errorRate = await queryScalar(
-    buildPromQL("error_rate", service, namespace, OBSERVATION_WINDOW),
-    ts,
-  );
-  const latencyRaw = await queryScalar(
-    buildPromQL("latency_p99", service, namespace, OBSERVATION_WINDOW),
-    ts,
-  );
-  const restarts = await queryScalar(
-    buildPromQL("restarts", service, namespace, OBSERVATION_WINDOW),
-    ts,
-  );
+  const [errorRate, latencyRaw, restarts] = await Promise.all([
+    queryScalar(buildPromQL("error_rate", service, namespace, OBSERVATION_WINDOW), ts),
+    queryScalar(buildPromQL("latency_p99", service, namespace, OBSERVATION_WINDOW), ts),
+    queryScalar(buildPromQL("restarts", service, namespace, OBSERVATION_WINDOW), ts),
+  ]);
 
   return {
     error_rate: errorRate,
@@ -190,8 +183,10 @@ export async function compareDeploys(input: {
   let promError = false;
 
   try {
-    metricsA = await fetchMetrics(rowA.service_name, rowA.namespace, rowA.finished_at);
-    metricsB = await fetchMetrics(rowB.service_name, rowB.namespace, rowB.finished_at);
+    [metricsA, metricsB] = await Promise.all([
+      fetchMetrics(rowA.service_name, rowA.namespace, rowA.finished_at),
+      fetchMetrics(rowB.service_name, rowB.namespace, rowB.finished_at),
+    ]);
   } catch {
     promError = true;
     metricsA = { error_rate: null, latency_p99_ms: null, restarts: null };
