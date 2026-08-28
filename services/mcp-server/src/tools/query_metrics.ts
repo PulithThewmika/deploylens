@@ -45,7 +45,7 @@ const METRIC_UNITS: Record<MetricName, string> = {
 // ── PromQL builders (doc 05 canonical) ─────────────────────────
 
 export function sanitizeLabel(value: string): string {
-  return value.replace(/[\\"'\n\r]/g, (m) => "\\" + m);
+  return value.replace(/[\\"\n\r]/g, (m) => "\\" + m);
 }
 
 export function buildPromQL(
@@ -175,17 +175,21 @@ function buildSummary(
     return `No data for ${metric} on ${service} from ${fromStr} to ${toStr}`;
   }
 
-  const values = points.map((p) => p.v);
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const max = Math.max(...values);
+  let sum = 0;
+  let max = -Infinity;
+  for (const p of points) {
+    sum += p.v;
+    if (p.v > max) max = p.v;
+  }
+  const avg = sum / points.length;
   const unit = METRIC_UNITS[metric];
 
   const fmtAvg = formatValue(avg, metric);
   const fmtMax = formatValue(max, metric);
 
   return (
-    `${metric} for ${service}: avg ${fmtAvg} ${unit}, ` +
-    `max ${fmtMax} ${unit} over ${points.length} samples (${fromStr} to ${toStr})`
+    `${metric} for ${service}: avg ${fmtAvg}, ` +
+    `max ${fmtMax} over ${points.length} samples (${fromStr} to ${toStr})`
   );
 }
 
