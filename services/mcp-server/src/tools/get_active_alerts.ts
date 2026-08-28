@@ -53,7 +53,8 @@ async function queryActiveAlerts(
      FROM alerts a
      JOIN services s ON s.id = a.service_id
      WHERE ${where}
-     ORDER BY a.fired_at DESC`,
+     ORDER BY a.fired_at DESC
+     LIMIT 100`,
     params,
   );
 }
