@@ -1,5 +1,6 @@
 import { calcStageDurations, formatDuration, normalizeStageStatus, stageLabel, STAGE_STATUS_COLORS } from '../lib/timeline'
 import { useElementWidth } from '../hooks/useElementWidth'
+import { useEffect, useState } from 'react'
 import type { Deployment, TimelineStage } from '../types/deployment'
 
 type PipelineTimelineProps = {
@@ -55,6 +56,12 @@ function PipelineStage({ stage, durationS }: PipelineStageProps) {
   const { ref, width } = useElementWidth<HTMLDivElement>()
   const showDurationText = durationS > 0 && width >= MIN_WIDTH_FOR_TEXT_PX
 
+  const [filled, setFilled] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setFilled(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
   return (
     <div
       ref={ref}
@@ -63,7 +70,12 @@ function PipelineStage({ stage, durationS }: PipelineStageProps) {
     >
       <div
         className={`flex h-full w-full items-center justify-center overflow-hidden ${status === 'in-progress' ? 'animate-pulse' : ''}`}
-        style={{ backgroundColor: STAGE_STATUS_COLORS[status] }}
+        style={{
+          backgroundColor: STAGE_STATUS_COLORS[status],
+          transform: filled ? 'scaleX(1)' : 'scaleX(0)',
+          transformOrigin: 'left',
+          transition: 'transform 0.4s ease-out',
+        }}
       >
         {showDurationText && (
           <span className="truncate px-1 text-[10px] font-medium text-black/70">
