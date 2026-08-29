@@ -1,0 +1,49 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["deploylens", "service-deep-dive"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "query": "SELECT name FROM services ORDER BY name",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": ".*" }
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "query": "sample-app",
+        "current": { "text": "sample-app", "value": "sample-app" },
+        "options": [
+          { "text": "sample-app", "value": "sample-app", "selected": true }
+        ]
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Service Deep Dive",
+  "uid": "service-deep-dive",
+  "version": 1,
+  "weekStart": ""
+}
