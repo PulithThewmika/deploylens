@@ -103,6 +103,7 @@ export async function getActiveAlerts(input: {
         type: "text",
         text: JSON.stringify({
           error: `Database query failed: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `get_active_alerts failed: PostgreSQL unreachable or query error`,
         }),
       }],
     };
