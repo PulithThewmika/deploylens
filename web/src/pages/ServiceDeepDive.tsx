@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { GrafanaPanel } from '../components/GrafanaPanel'
 import { PipelineTimeline } from '../components/PipelineTimeline'
@@ -5,6 +6,7 @@ import { useDeployments } from '../hooks/useDeployments'
 import { useDORA } from '../hooks/useDORA'
 import { useServices } from '../hooks/useServices'
 import { formatDuration } from '../lib/timeline'
+import type { Deployment } from '../types/deployment'
 import type { DORAMetrics } from '../types/dora'
 
 export function ServiceDeepDive() {
@@ -41,7 +43,68 @@ export function ServiceDeepDive() {
           <GrafanaPanel uid="deploy-timeline" panelId={2} service={name} title="p99 Latency" />
         </div>
       </section>
+      {deployments && deployments.length > 0 && <CompareSection deployments={deployments} />}
     </div>
+  )
+}
+
+type CompareSectionProps = {
+  deployments: Deployment[]
+}
+
+function CompareSection({ deployments }: CompareSectionProps) {
+  const [active, setActive] = useState(false)
+  const [selected, setSelected] = useState<number[]>([])
+
+  function toggle(id: number) {
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((s) => s !== id)
+      if (prev.length >= 2) return prev
+      return [...prev, id]
+    })
+  }
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-sm font-semibold text-text">Compare</h2>
+        <button
+          type="button"
+          onClick={() => {
+            setActive((a) => !a)
+            setSelected([])
+          }}
+          className="rounded border border-border px-3 py-1 text-xs text-text-muted hover:border-accent/50 hover:text-text"
+        >
+          {active ? 'Cancel' : 'Compare deployments'}
+        </button>
+      </div>
+      {active && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-text-muted">Select two deployments to compare ({selected.length}/2).</p>
+          {deployments.map((d) => {
+            const shortSha = d.commit_sha ? d.commit_sha.slice(0, 7) : d.status
+            const checked = selected.includes(d.id)
+            const disabled = !checked && selected.length >= 2
+            return (
+              <label
+                key={d.id}
+                className={`flex items-center gap-2 rounded border border-border bg-surface px-3 py-2 text-sm ${disabled ? 'opacity-50' : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => toggle(d.id)}
+                />
+                <span className="font-heading text-text">{shortSha}</span>
+                <span className="text-text-muted">{d.author ?? 'unknown'}</span>
+              </label>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }
 
