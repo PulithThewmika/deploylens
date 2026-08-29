@@ -45,6 +45,43 @@
         "justifyMode": "auto",
         "textMode": "name"
       }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Build Duration Trend",
+      "description": "build_duration_s per deploy, most recent deploys first.",
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  d.started_at AS time,\n  d.build_duration_s AS value,\n  s.name AS metric\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nWHERE d.build_duration_s IS NOT NULL\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.started_at)\nORDER BY d.started_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "pointSize": 5,
+            "showPoints": "always"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
     }
   ],
   "refresh": "30s",
