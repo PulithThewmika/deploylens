@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+router = APIRouter(prefix="/api", tags=["chat"])
 
 
-@router.post("/")
+@router.post("/chat")
 async def chat_proxy():
     return {"status": "not_implemented"}
