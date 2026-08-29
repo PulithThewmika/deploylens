@@ -1,4 +1,5 @@
-import { calcStageDurations, normalizeStageStatus, stageLabel, STAGE_STATUS_COLORS } from '../lib/timeline'
+import { calcStageDurations, formatDuration, normalizeStageStatus, stageLabel, STAGE_STATUS_COLORS } from '../lib/timeline'
+import { useElementWidth } from '../hooks/useElementWidth'
 import type { Deployment, TimelineStage } from '../types/deployment'
 
 type PipelineTimelineProps = {
@@ -45,17 +46,31 @@ type PipelineStageProps = {
 const MIN_SEGMENT_WEIGHT_S = 10
 const MIN_SEGMENT_WIDTH_PX = 24
 
+const MIN_WIDTH_FOR_TEXT_PX = 44
+
 function PipelineStage({ stage, durationS }: PipelineStageProps) {
   const flexGrow = Math.max(durationS, MIN_SEGMENT_WEIGHT_S)
   const status = normalizeStageStatus(stage.status)
   const timestamp = stage.at ? new Date(stage.at).toLocaleString() : 'not yet reached'
+  const { ref, width } = useElementWidth<HTMLDivElement>()
+  const showDurationText = durationS > 0 && width >= MIN_WIDTH_FOR_TEXT_PX
 
   return (
     <div
+      ref={ref}
       className="group relative h-full"
       style={{ flexGrow, flexBasis: 0, minWidth: MIN_SEGMENT_WIDTH_PX }}
     >
-      <div className="h-full w-full" style={{ backgroundColor: STAGE_STATUS_COLORS[status] }} />
+      <div
+        className="flex h-full w-full items-center justify-center overflow-hidden"
+        style={{ backgroundColor: STAGE_STATUS_COLORS[status] }}
+      >
+        {showDurationText && (
+          <span className="truncate px-1 text-[10px] font-medium text-black/70">
+            {formatDuration(durationS)}
+          </span>
+        )}
+      </div>
       <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-xs text-text shadow-lg group-hover:block">
         <div className="font-medium">{stageLabel(stage.stage)}</div>
         <div className="text-text-muted">{timestamp}</div>
