@@ -196,6 +196,33 @@
         "legend": { "displayMode": "list", "placement": "bottom" },
         "tooltip": { "mode": "multi" }
       }
+    },
+    {
+      "id": 6,
+      "type": "logs",
+      "title": "Live Log Stream",
+      "description": "Raw container log stream from Loki.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": {
+        "type": "loki",
+        "uid": "deploylens-loki"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{namespace=\"$environment\", container=~\"$service\"}"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      }
     }
   ],
   "refresh": "30s",
