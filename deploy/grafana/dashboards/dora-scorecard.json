@@ -82,6 +82,43 @@
         "justifyMode": "auto",
         "textMode": "auto"
       }
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "Change Failure Rate",
+      "description": "% of deployments that failed or were assessed degraded/failed (dora_change_failure_rate).",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  ROUND(\n    COUNT(*) FILTER (WHERE is_failure)::numeric / NULLIF(COUNT(*), 0) * 100,\n    1\n  ) AS value\nFROM dora_change_failure_rate\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(started_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
     }
   ],
   "refresh": "1m",
