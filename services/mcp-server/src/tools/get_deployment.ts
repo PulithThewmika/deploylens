@@ -114,6 +114,7 @@ export async function getDeployment(input: {
           type: "text",
           text: JSON.stringify({
             error: `Deployment ${input.deployment_id} not found`,
+            summary: `get_deployment failed: deployment ${input.deployment_id} not found`,
           }),
         },
       ],

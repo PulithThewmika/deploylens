@@ -76,6 +76,7 @@ export async function getDeployHealth(input: {
           type: "text",
           text: JSON.stringify({
             error: `Deployment ${input.deployment_id} not found`,
+            summary: `get_deploy_health failed: deployment ${input.deployment_id} not found`,
           }),
         },
       ],

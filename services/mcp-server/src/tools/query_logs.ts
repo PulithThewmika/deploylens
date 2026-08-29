@@ -152,6 +152,7 @@ export async function queryLogs(input: {
         type: "text",
         text: JSON.stringify({
           error: `Invalid time: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `query_logs failed: invalid time parameter`,
         }),
       }],
     };
@@ -161,7 +162,7 @@ export async function queryLogs(input: {
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ error: "'from' must be before 'to'" }),
+        text: JSON.stringify({ error: "'from' must be before 'to'", summary: "query_logs failed: 'from' must be before 'to'" }),
       }],
     };
   }

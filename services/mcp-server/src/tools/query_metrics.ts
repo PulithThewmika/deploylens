@@ -238,7 +238,7 @@ export async function queryMetrics(input: {
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ error: `Service "${input.service}" not found` }),
+        text: JSON.stringify({ error: `Service "${input.service}" not found`, summary: `query_metrics failed: service "${input.service}" not found` }),
       }],
     };
   }
@@ -258,6 +258,7 @@ export async function queryMetrics(input: {
         type: "text",
         text: JSON.stringify({
           error: `Invalid time: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `query_metrics failed: invalid time parameter`,
         }),
       }],
     };
@@ -267,7 +268,7 @@ export async function queryMetrics(input: {
     return {
       content: [{
         type: "text",
-        text: JSON.stringify({ error: "'from' must be before 'to'" }),
+        text: JSON.stringify({ error: "'from' must be before 'to'", summary: "query_metrics failed: 'from' must be before 'to'" }),
       }],
     };
   }
@@ -290,6 +291,7 @@ export async function queryMetrics(input: {
         type: "text",
         text: JSON.stringify({
           error: `Prometheus query failed: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `query_metrics failed: Prometheus unreachable or query error`,
         }),
       }],
     };

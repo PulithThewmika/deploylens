@@ -129,6 +129,7 @@ export async function getDoraMetrics(input: {
         type: "text",
         text: JSON.stringify({
           error: `Database query failed: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `get_dora_metrics failed: PostgreSQL unreachable or query error`,
         }),
       }],
     };
