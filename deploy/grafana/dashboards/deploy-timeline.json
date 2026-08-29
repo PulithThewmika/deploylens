@@ -135,6 +135,77 @@
         "legend": { "displayMode": "list", "placement": "bottom" },
         "tooltip": { "mode": "multi" }
       }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Recent Deployments",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT\n  d.id,\n  s.name AS service,\n  d.status,\n  substring(d.commit_sha, 1, 7) AS commit,\n  d.image_tag,\n  d.branch,\n  d.author,\n  ha.score AS health_score,\n  ha.verdict,\n  d.build_duration_s,\n  d.started_at,\n  d.finished_at\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE ('$service' = '*' OR s.name = '$service')\n  AND $__timeFilter(d.started_at)\nORDER BY d.started_at DESC\nLIMIT 50",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "verdict" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "healthy": { "text": "healthy", "color": "green" } } },
+                  { "type": "value", "options": { "degraded": { "text": "degraded", "color": "orange" } } },
+                  { "type": "value", "options": { "failed": { "text": "failed", "color": "red" } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "health_score" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic"
+                }
+              },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "orange", "value": 50 },
+                    { "color": "green", "value": 80 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "started_at", "desc": true }],
+        "footer": { "show": false }
+      }
     }
   ],
   "refresh": "30s",
