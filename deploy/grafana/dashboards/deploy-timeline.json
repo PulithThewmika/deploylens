@@ -259,10 +259,10 @@
         "name": "environment",
         "label": "Environment",
         "type": "custom",
-        "query": "sample-app",
-        "current": { "text": "sample-app", "value": "sample-app" },
+        "query": "deploylens",
+        "current": { "text": "deploylens", "value": "deploylens" },
         "options": [
-          { "text": "sample-app", "value": "sample-app", "selected": true }
+          { "text": "deploylens", "value": "deploylens", "selected": true }
         ]
       }
     ]
