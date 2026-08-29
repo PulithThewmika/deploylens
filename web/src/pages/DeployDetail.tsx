@@ -38,10 +38,15 @@ export function DeployDetail() {
           <h2 className="font-heading text-sm font-semibold text-text">Health evidence</h2>
           <GrafanaTimeWindowLink deployment={deployment} />
         </div>
-        {deployment.health_assessment && deployment.health_evidence.length > 0 ? (
-          <HealthEvidenceTable evidence={deployment.health_evidence} />
-        ) : (
+        {!deployment.health_assessment ? (
           <p className="text-sm text-text-muted">Assessment pending.</p>
+        ) : deployment.health_evidence.length === 0 ? (
+          <p className="text-sm text-text-muted">
+            Assessed as {deployment.health_assessment.verdict} ({deployment.health_assessment.score}/100) — no
+            per-metric evidence available (insufficient request volume in the baseline/observation windows).
+          </p>
+        ) : (
+          <HealthEvidenceTable evidence={deployment.health_evidence} />
         )}
       </section>
     </div>
