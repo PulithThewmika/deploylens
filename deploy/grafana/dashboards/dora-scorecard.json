@@ -22,7 +22,7 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT\n  deploy_date AS time,\n  SUM(deploy_count) AS value\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nGROUP BY deploy_date\nORDER BY deploy_date"
+          "rawSql": "WITH days AS (\n  SELECT generate_series($__timeFrom()::date, $__timeTo()::date, interval '1 day')::date AS d\n),\ntotals AS (\n  SELECT deploy_date, SUM(deploy_count) AS cnt\n  FROM dora_deploy_frequency\n  WHERE ('$service' = '.*' OR service_name = '$service')\n    AND $__timeFilter(deploy_date)\n  GROUP BY deploy_date\n)\nSELECT\n  days.d AS time,\n  COALESCE(totals.cnt, 0) AS value\nFROM days\nLEFT JOIN totals ON totals.deploy_date = days.d\nORDER BY days.d"
         }
       ],
       "fieldConfig": {
@@ -173,7 +173,7 @@
       "id": 5,
       "type": "heatmap",
       "title": "Deploys per Day",
-      "description": "Deploy count bucketed by day from dora_deploy_frequency.",
+      "description": "Deploy count per service per day from dora_deploy_frequency — one row (Y axis) per service, colored by that day's deploy_count.",
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -183,7 +183,7 @@
         {
           "refId": "A",
           "format": "time_series",
-          "rawSql": "SELECT\n  deploy_date AS time,\n  SUM(deploy_count) AS value\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nGROUP BY deploy_date\nORDER BY deploy_date"
+          "rawSql": "SELECT\n  deploy_date AS time,\n  deploy_count AS value,\n  service_name AS metric\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nORDER BY deploy_date"
         }
       ],
       "fieldConfig": {
@@ -193,10 +193,7 @@
         "overrides": []
       },
       "options": {
-        "calculate": true,
-        "calculation": {
-          "xBuckets": { "mode": "size", "value": "1d" }
-        },
+        "calculate": false,
         "color": {
           "mode": "scheme",
           "scheme": "Greens",
