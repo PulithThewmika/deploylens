@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { Overview } from './pages/Overview'
 import { ServiceDeepDive } from './pages/ServiceDeepDive'
+import { DeployDetail } from './pages/DeployDetail'
 
 const queryClient = new QueryClient()
 
@@ -23,6 +24,7 @@ function App() {
             <Route path="/" element={<Overview />} />
             <Route path="/services" element={<PlaceholderPage title="Services" />} />
             <Route path="/services/:name" element={<ServiceDeepDive />} />
+            <Route path="/deployments/:id" element={<DeployDetail />} />
             <Route path="/chat" element={<PlaceholderPage title="Chat" />} />
           </Route>
         </Routes>
