@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 const VERDICT_COLORS: Record<string, string> = {
   healthy: '#22C55E',
   degraded: '#F59E0B',
@@ -17,8 +19,14 @@ export function HealthRing({ score, verdict, size = 56 }: HealthRingProps) {
   const radius = (size - strokeWidth) / 2
   const circumference = 2 * Math.PI * radius
   const clampedScore = Math.min(100, Math.max(0, score ?? 0))
-  const offset = circumference * (1 - clampedScore / 100)
+  const targetOffset = circumference * (1 - clampedScore / 100)
   const color = (verdict && VERDICT_COLORS[verdict]) ?? TRACK_COLOR
+
+  const [swept, setSwept] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setSwept(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
@@ -40,7 +48,8 @@ export function HealthRing({ score, verdict, size = 56 }: HealthRingProps) {
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={offset}
+          strokeDashoffset={swept ? targetOffset : circumference}
+          style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
         />
       </svg>
     </div>
