@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { PipelineTimeline } from '../components/PipelineTimeline'
 import { useDeployments } from '../hooks/useDeployments'
 import { useDORA } from '../hooks/useDORA'
 import { useServices } from '../hooks/useServices'
@@ -7,7 +8,7 @@ import type { DORAMetrics } from '../types/dora'
 
 export function ServiceDeepDive() {
   const { name = '' } = useParams<{ name: string }>()
-  const { data: deployments } = useDeployments(name)
+  const { data: deployments, isLoading: deploymentsLoading, isError: deploymentsError } = useDeployments(name)
   const { data: dora } = useDORA(name)
   const { data: services } = useServices()
   const service = services?.find((s) => s.name === name)
@@ -20,7 +21,18 @@ export function ServiceDeepDive() {
         environment={service?.namespace ?? null}
         dora={dora}
       />
-      <p className="text-sm text-text-muted">{deployments?.length ?? 0} deployments loaded</p>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-sm font-semibold text-text">Pipeline timeline</h2>
+        {deploymentsError ? (
+          <p className="text-sm text-failed">Failed to load deployments. Retrying automatically.</p>
+        ) : !deploymentsLoading && deployments?.length === 0 ? (
+          <p className="text-sm text-text-muted">No deployments yet for this service.</p>
+        ) : deploymentsLoading ? (
+          <div className="h-40 animate-pulse rounded-lg border border-border bg-surface" />
+        ) : (
+          <PipelineTimeline deployments={deployments ?? []} />
+        )}
+      </section>
     </div>
   )
 }
