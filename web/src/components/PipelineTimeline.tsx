@@ -62,7 +62,7 @@ function PipelineStage({ stage, durationS }: PipelineStageProps) {
       style={{ flexGrow, flexBasis: 0, minWidth: MIN_SEGMENT_WIDTH_PX }}
     >
       <div
-        className="flex h-full w-full items-center justify-center overflow-hidden"
+        className={`flex h-full w-full items-center justify-center overflow-hidden ${status === 'in-progress' ? 'animate-pulse' : ''}`}
         style={{ backgroundColor: STAGE_STATUS_COLORS[status] }}
       >
         {showDurationText && (
