@@ -1,6 +1,7 @@
 import logging
 import os
 from collections.abc import AsyncIterator
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
@@ -12,6 +13,15 @@ router = APIRouter(prefix="/api/grafana", tags=["grafana"])
 
 GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://grafana:3000")
 GRAFANA_SERVICE_ACCOUNT_TOKEN = os.environ.get("GRAFANA_SERVICE_ACCOUNT_TOKEN", "")
+
+_client: httpx.AsyncClient | None = None
+
+
+def _get_client() -> httpx.AsyncClient:
+    global _client
+    if _client is None or _client.is_closed:
+        _client = httpx.AsyncClient(base_url=GRAFANA_URL, timeout=10.0)
+    return _client
 
 
 @router.get("/proxy")
@@ -44,14 +54,16 @@ async def grafana_proxy(
     }
     headers = {"Authorization": f"Bearer {GRAFANA_SERVICE_ACCOUNT_TOKEN}"}
 
-    client = httpx.AsyncClient()
+    client = _get_client()
     try:
+        # uid is escaped before it's spliced into the path — otherwise a
+        # uid containing "?"/"&" could inject extra query parameters
+        # ahead of the ones set above.
         request = client.build_request(
-            "GET", f"{GRAFANA_URL}/d-solo/{uid}", params=params, headers=headers
+            "GET", f"/d-solo/{quote(uid, safe='')}", params=params, headers=headers
         )
         upstream = await client.send(request, stream=True)
     except httpx.RequestError:
-        await client.aclose()
         logger.exception("Grafana unreachable at %s", GRAFANA_URL)
         raise HTTPException(status_code=502, detail="Grafana unreachable")
 
@@ -61,7 +73,6 @@ async def grafana_proxy(
                 yield chunk
         finally:
             await upstream.aclose()
-            await client.aclose()
 
     # Allow-list rather than strip: only content-type is safe/meaningful
     # to forward. This also sidesteps re-sending upstream's

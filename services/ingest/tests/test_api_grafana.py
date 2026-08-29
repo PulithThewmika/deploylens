@@ -28,11 +28,10 @@ async def test_proxy_returns_grafana_panel_html(client):
     mock_httpx_client = MagicMock()
     mock_httpx_client.build_request = MagicMock(return_value="fake-request")
     mock_httpx_client.send = AsyncMock(return_value=upstream)
-    mock_httpx_client.aclose = AsyncMock()
 
     with (
         patch("app.routers.grafana.GRAFANA_SERVICE_ACCOUNT_TOKEN", "super-secret-token"),
-        patch("app.routers.grafana.httpx.AsyncClient", return_value=mock_httpx_client),
+        patch("app.routers.grafana._get_client", return_value=mock_httpx_client),
     ):
         async with AsyncClient(
             transport=ASGITransport(app=client), base_url="http://test"
@@ -57,15 +56,35 @@ async def test_proxy_returns_grafana_panel_html(client):
 
 
 @pytest.mark.asyncio
+async def test_proxy_escapes_uid_before_building_url(client):
+    upstream = _mock_upstream()
+    mock_httpx_client = MagicMock()
+    mock_httpx_client.build_request = MagicMock(return_value="fake-request")
+    mock_httpx_client.send = AsyncMock(return_value=upstream)
+
+    with patch("app.routers.grafana._get_client", return_value=mock_httpx_client):
+        async with AsyncClient(
+            transport=ASGITransport(app=client), base_url="http://test"
+        ) as ac:
+            await ac.get(
+                "/api/grafana/proxy",
+                params={"uid": "deploy-timeline?from=0&to=999", "panelId": 1},
+            )
+
+    sent_args = mock_httpx_client.build_request.call_args
+    url_path = sent_args.args[1]
+    assert url_path == "/d-solo/deploy-timeline%3Ffrom%3D0%26to%3D999"
+
+
+@pytest.mark.asyncio
 async def test_proxy_returns_502_when_grafana_unreachable(client):
     mock_httpx_client = MagicMock()
     mock_httpx_client.build_request = MagicMock(return_value="fake-request")
     mock_httpx_client.send = AsyncMock(
         side_effect=httpx.ConnectError("connection refused")
     )
-    mock_httpx_client.aclose = AsyncMock()
 
-    with patch("app.routers.grafana.httpx.AsyncClient", return_value=mock_httpx_client):
+    with patch("app.routers.grafana._get_client", return_value=mock_httpx_client):
         async with AsyncClient(
             transport=ASGITransport(app=client), base_url="http://test"
         ) as ac:
@@ -76,4 +95,3 @@ async def test_proxy_returns_502_when_grafana_unreachable(client):
 
     assert resp.status_code == 502
     assert resp.json()["detail"] == "Grafana unreachable"
-    mock_httpx_client.aclose.assert_awaited_once()
