@@ -12,7 +12,7 @@
       "id": 1,
       "type": "stat",
       "title": "ArgoCD Sync Status",
-      "description": "Current ArgoCD application health status (argocd_app_health_status). Only the status currently at value 1 is shown.",
+      "description": "Current ArgoCD application health status (argocd_app_health_status) for the sample-app umbrella Application. ArgoCD manages all sample-app microservices as a single Application (deploy/argocd/sample-app.yaml, directory.recurse=true), so this reflects the whole app's sync health, not a per-service status. Only the status currently at value 1 is shown.",
       "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
       "datasource": {
         "type": "prometheus",
@@ -21,7 +21,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "argocd_app_health_status{name=~\"$service\"} == 1",
+          "expr": "argocd_app_health_status{name=\"sample-app\"} == 1",
           "legendFormat": "{{health_status}}",
           "instant": true
         }
@@ -294,10 +294,10 @@
         "name": "environment",
         "label": "Environment",
         "type": "custom",
-        "query": "sample-app",
-        "current": { "text": "sample-app", "value": "sample-app" },
+        "query": "deploylens",
+        "current": { "text": "deploylens", "value": "deploylens" },
         "options": [
-          { "text": "sample-app", "value": "sample-app", "selected": true }
+          { "text": "deploylens", "value": "deploylens", "selected": true }
         ]
       }
     ]
