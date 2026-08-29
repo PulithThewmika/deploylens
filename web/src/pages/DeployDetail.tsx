@@ -97,7 +97,7 @@ function toDeployment(d: DeploymentDetail): Deployment {
   }
 }
 
-function DeployMetadata({ deployment }: { deployment: NonNullable<ReturnType<typeof useDeployment>['data']> }) {
+function DeployMetadata({ deployment }: { deployment: DeploymentDetail }) {
   const shortSha = deployment.commit_sha ? deployment.commit_sha.slice(0, 7) : null
   const commitUrl =
     deployment.service?.repo && deployment.commit_sha
