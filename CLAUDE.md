@@ -52,11 +52,11 @@ services/
     agent/health_score.py     # scoring formula (doc 05 — exact)
     agent/promql.py           # PromQL query builders
     agent/alerting.py         # Alertmanager client
-  mcp/                        # MCP server (M3)
+  mcp-server/                 # MCP server (M3)
 sample-app/
   frontend/  orders/  payments/   # FastAPI microservices with chaos flags
   deploy/                     # K8s manifests + ServiceMonitors + loadgen
-shell/                        # React unified shell (M3)
+web/                          # React unified shell (M3)
 .github/workflows/sample-app.yml
 Makefile
 .env                          # NEVER commit — all credentials live here
