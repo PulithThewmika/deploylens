@@ -52,6 +52,12 @@ export function HealthRing({ score, verdict, size = 56 }: HealthRingProps) {
           style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
         />
       </svg>
+      <span
+        className="absolute font-heading font-medium tabular-nums text-text"
+        style={{ fontSize: size * 0.32 }}
+      >
+        {Math.round(clampedScore)}
+      </span>
     </div>
   )
 }
