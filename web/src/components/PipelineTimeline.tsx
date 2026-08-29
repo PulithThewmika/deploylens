@@ -1,4 +1,4 @@
-import { calcStageDurations, normalizeStageStatus, STAGE_STATUS_COLORS } from '../lib/timeline'
+import { calcStageDurations, normalizeStageStatus, stageLabel, STAGE_STATUS_COLORS } from '../lib/timeline'
 import type { Deployment, TimelineStage } from '../types/deployment'
 
 type PipelineTimelineProps = {
@@ -48,17 +48,18 @@ const MIN_SEGMENT_WIDTH_PX = 24
 function PipelineStage({ stage, durationS }: PipelineStageProps) {
   const flexGrow = Math.max(durationS, MIN_SEGMENT_WEIGHT_S)
   const status = normalizeStageStatus(stage.status)
+  const timestamp = stage.at ? new Date(stage.at).toLocaleString() : 'not yet reached'
 
   return (
     <div
-      className="h-full"
-      style={{
-        flexGrow,
-        flexBasis: 0,
-        minWidth: MIN_SEGMENT_WIDTH_PX,
-        backgroundColor: STAGE_STATUS_COLORS[status],
-      }}
-      title={`${stage.stage} (${durationS}s)`}
-    />
+      className="group relative h-full"
+      style={{ flexGrow, flexBasis: 0, minWidth: MIN_SEGMENT_WIDTH_PX }}
+    >
+      <div className="h-full w-full" style={{ backgroundColor: STAGE_STATUS_COLORS[status] }} />
+      <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded border border-border bg-surface px-2 py-1 text-xs text-text shadow-lg group-hover:block">
+        <div className="font-medium">{stageLabel(stage.stage)}</div>
+        <div className="text-text-muted">{timestamp}</div>
+      </div>
+    </div>
   )
 }
