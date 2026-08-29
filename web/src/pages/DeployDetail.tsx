@@ -10,18 +10,26 @@ export function DeployDetail() {
   const deployId = Number(id)
   const { data: deployment, isLoading, isError } = useDeployment(deployId)
 
-  if (!Number.isFinite(deployId) || isError) {
+  if (!Number.isFinite(deployId)) {
     return (
       <div className="p-6">
-        <p className="text-sm text-failed">Failed to load deployment.</p>
+        <p className="text-sm text-failed">Invalid deployment ID.</p>
       </div>
     )
   }
 
-  if (isLoading || !deployment) {
+  if (isLoading) {
     return (
       <div className="p-6">
         <div className="h-40 animate-pulse rounded-lg border border-border bg-surface" />
+      </div>
+    )
+  }
+
+  if (isError || !deployment) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-failed">Deployment not found.</p>
       </div>
     )
   }

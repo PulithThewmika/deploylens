@@ -14,5 +14,6 @@ export function useDeployment(id: number) {
     queryKey: ['deployment', id],
     queryFn: () => fetchDeployment(id),
     enabled: Number.isFinite(id),
+    retry: false,
   })
 }
