@@ -41,6 +41,14 @@ describe('PipelineTimeline', () => {
     expect(screen.getAllByText(/^sha0\d{3}$/)).toHaveLength(10)
   })
 
+  it('orders rows by most-recent-first regardless of input order', () => {
+    const older = makeDeployment({ id: 1, commit_sha: 'older111', started_at: '2026-08-29T08:00:00Z' })
+    const newer = makeDeployment({ id: 2, commit_sha: 'newer222', started_at: '2026-08-29T12:00:00Z' })
+    render(<PipelineTimeline deployments={[older, newer]} />)
+    const shas = screen.getAllByText(/^(older|newer)/).map((el) => el.textContent)
+    expect(shas).toEqual(['newer22', 'older11'])
+  })
+
   it('pads an in-flight deployment with pending stages instead of crashing', () => {
     const inFlight = makeDeployment({
       id: 2,

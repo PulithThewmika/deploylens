@@ -15,7 +15,9 @@ type PipelineTimelineProps = {
 }
 
 export function PipelineTimeline({ deployments }: PipelineTimelineProps) {
-  const last10 = deployments.slice(0, 10)
+  const last10 = [...deployments]
+    .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime())
+    .slice(0, 10)
 
   return (
     <div className="flex flex-col gap-2">
