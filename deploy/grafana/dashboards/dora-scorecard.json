@@ -7,7 +7,46 @@
   "graphTooltip": 1,
   "id": null,
   "links": [],
-  "panels": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Deployment Frequency",
+      "description": "Average deploys/day over the selected window (dora_deploy_frequency).",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  deploy_date AS time,\n  SUM(deploy_count) AS value\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nGROUP BY deploy_date\nORDER BY deploy_date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    }
+  ],
   "refresh": "1m",
   "schemaVersion": 39,
   "tags": ["deploylens", "dora-scorecard"],
