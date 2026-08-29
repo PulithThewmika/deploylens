@@ -121,8 +121,16 @@ function createMcpServer(): McpServer {
 
 async function main(): Promise<void> {
   await postgres.testConnection();
-  await prometheus.testConnection();
-  await loki.testConnection();
+  try {
+    await prometheus.testConnection();
+  } catch (err) {
+    console.warn("[prometheus] not reachable — tools needing it will degrade at call time:", (err as Error).message);
+  }
+  try {
+    await loki.testConnection();
+  } catch (err) {
+    console.warn("[loki] not reachable — tools needing it will degrade at call time:", (err as Error).message);
+  }
 
   console.log(`MCP server ready, ${TOOL_COUNT} tools registered`);
 
