@@ -1,0 +1,277 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "enable": true,
+        "iconColor": "grey",
+        "target": {
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status = 'deployed'\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\nORDER BY d.finished_at DESC\nLIMIT 200",
+          "format": "table"
+        },
+        "mappings": {
+          "text": { "source": "field", "value": "text" },
+          "title": { "source": "field", "value": "title" },
+          "tags": { "source": "field", "value": "tags" },
+          "time": { "source": "field", "value": "time" }
+        }
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Error Rate",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deploylens-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (service) (rate(http_requests_total{service=~\"$service\", namespace=\"$environment\", status=~\"5..\"}[$__rate_interval])) / sum by (service) (rate(http_requests_total{service=~\"$service\", namespace=\"$environment\"}[$__rate_interval]))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "p99 Latency",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deploylens-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (le, service) (rate(http_request_duration_seconds_bucket{service=~\"$service\", namespace=\"$environment\"}[$__rate_interval])))",
+          "legendFormat": "{{service}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1.0 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Pod Restarts",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deploylens-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (container) (increase(kube_pod_container_status_restarts_total{namespace=\"$environment\", container=~\"$service\"}[5m]))",
+          "legendFormat": "{{container}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Recent Deployments",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "rawSql": "SELECT\n  d.id,\n  s.name AS service,\n  d.status,\n  substring(d.commit_sha, 1, 7) AS commit,\n  d.image_tag,\n  d.branch,\n  d.author,\n  ha.score AS health_score,\n  ha.verdict,\n  d.build_duration_s,\n  d.started_at,\n  d.finished_at\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.started_at)\nORDER BY d.started_at DESC\nLIMIT 50",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Open Service Deep Dive",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${__data.fields.service}&from=${__data.fields.started_at}&to=${__data.fields.finished_at}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "verdict" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "healthy": { "text": "healthy", "color": "green" } } },
+                  { "type": "value", "options": { "degraded": { "text": "degraded", "color": "orange" } } },
+                  { "type": "value", "options": { "failed": { "text": "failed", "color": "red" } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "health_score" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic"
+                }
+              },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "orange", "value": 50 },
+                    { "color": "green", "value": 80 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "started_at", "desc": true }],
+        "footer": { "show": false }
+      }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["deploylens", "deploy-timeline"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "query": "SELECT name FROM services ORDER BY name",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": ".*" }
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "query": "sample-app",
+        "current": { "text": "sample-app", "value": "sample-app" },
+        "options": [
+          { "text": "sample-app", "value": "sample-app", "selected": true }
+        ]
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Deploy Timeline",
+  "uid": "deploy-timeline",
+  "version": 1,
+  "weekStart": ""
+}
