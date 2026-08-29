@@ -1,4 +1,4 @@
-import { calcStageDurations } from '../lib/timeline'
+import { calcStageDurations, normalizeStageStatus, STAGE_STATUS_COLORS } from '../lib/timeline'
 import type { Deployment, TimelineStage } from '../types/deployment'
 
 type PipelineTimelineProps = {
@@ -47,11 +47,17 @@ const MIN_SEGMENT_WIDTH_PX = 24
 
 function PipelineStage({ stage, durationS }: PipelineStageProps) {
   const flexGrow = Math.max(durationS, MIN_SEGMENT_WEIGHT_S)
+  const status = normalizeStageStatus(stage.status)
 
   return (
     <div
-      className="h-full bg-border"
-      style={{ flexGrow, flexBasis: 0, minWidth: MIN_SEGMENT_WIDTH_PX }}
+      className="h-full"
+      style={{
+        flexGrow,
+        flexBasis: 0,
+        minWidth: MIN_SEGMENT_WIDTH_PX,
+        backgroundColor: STAGE_STATUS_COLORS[status],
+      }}
       title={`${stage.stage} (${durationS}s)`}
     />
   )
