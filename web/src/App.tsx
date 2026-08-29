@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { Overview } from './pages/Overview'
+import { ServiceDeepDive } from './pages/ServiceDeepDive'
 
 const queryClient = new QueryClient()
 
@@ -21,6 +22,7 @@ function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Overview />} />
             <Route path="/services" element={<PlaceholderPage title="Services" />} />
+            <Route path="/services/:name" element={<ServiceDeepDive />} />
             <Route path="/chat" element={<PlaceholderPage title="Chat" />} />
           </Route>
         </Routes>

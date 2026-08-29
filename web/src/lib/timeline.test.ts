@@ -19,6 +19,14 @@ describe('calcStageDurations', () => {
     expect(calcStageDurations(stages)).toEqual([90, 0, 0])
   })
 
+  it('caps an absurd derived gap (e.g. deploy -> a much-later assess job) at 0 rather than a huge duration', () => {
+    const stages: TimelineStage[] = [
+      { stage: 'deploy', at: '2026-08-03T19:49:47Z', status: 'completed', duration_s: null },
+      { stage: 'assess', at: '2026-08-21T11:06:11Z', status: 'completed', duration_s: null },
+    ]
+    expect(calcStageDurations(stages)).toEqual([0, 0])
+  })
+
   it('returns 0 for a stage with no timestamp and no later timestamped stage', () => {
     const stages: TimelineStage[] = [
       { stage: 'sync', at: null, status: 'in_progress', duration_s: null },

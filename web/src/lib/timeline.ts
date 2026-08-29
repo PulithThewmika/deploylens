@@ -66,11 +66,22 @@ export function formatDuration(seconds: number): string {
   return remainingS > 0 ? `${minutes}m ${remainingS}s` : `${minutes}m`
 }
 
+// The gap-to-next-timestamp fallback below assumes the next timestamped
+// stage marks the end of this one, which breaks down for "assess": it's a
+// background health-check job, not the end of "deploy"/rollout, and can run
+// arbitrarily long after finished_at (observed live: 17+ days in seeded
+// data, versus the ~15-30min BASELINE/OBSERVATION windows in normal
+// operation). Past this ceiling the gap almost certainly isn't a real stage
+// duration, so treat it as unknown (minimum-width segment) instead of
+// letting one stage's segment swallow the whole row.
+const MAX_DERIVED_DURATION_S = 3600
+
 /**
  * Derives each stage's duration in seconds. Uses the backend-supplied
  * duration_s when present; otherwise falls back to the gap between this
  * stage's timestamp and the next stage with a known timestamp (several
- * backend stages, e.g. sync, never carry their own `at`).
+ * backend stages, e.g. sync, never carry their own `at`), capped at
+ * MAX_DERIVED_DURATION_S.
  */
 export function calcStageDurations(stages: TimelineStage[]): number[] {
   return stages.map((stage, i) => {
@@ -81,6 +92,7 @@ export function calcStageDurations(stages: TimelineStage[]): number[] {
       const next = stages.slice(i + 1).find((s) => s.at !== null)
       if (next?.at) {
         const diffS = (new Date(next.at).getTime() - new Date(stage.at).getTime()) / 1000
+        if (diffS > MAX_DERIVED_DURATION_S) return 0
         return Math.max(diffS, 0)
       }
     }
