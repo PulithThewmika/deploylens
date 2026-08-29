@@ -23,7 +23,7 @@ export function Chat() {
   return (
     <div className="flex h-full flex-col">
       {error && <div className="border-b border-failed/40 bg-failed/10 px-4 py-2 text-sm text-failed">{error}</div>}
-      <ChatWindow messages={messages} />
+      <ChatWindow messages={messages} isStreaming={isStreaming} />
       {messages.length === 0 && (
         <div className="flex flex-wrap gap-2 px-4 pb-2">
           {SUGGESTED_PROMPTS.map((prompt) => (
