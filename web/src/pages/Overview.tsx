@@ -1,16 +1,17 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ServiceCard } from '../components/ServiceCard'
 import { ServiceCardSkeleton } from '../components/ServiceCardSkeleton'
 import { useServices } from '../hooks/useServices'
 
 export function Overview() {
-  const navigate = useNavigate()
-  const { data: services, isLoading } = useServices()
+  const { data: services, isLoading, isError } = useServices()
 
   return (
     <div className="p-6">
       <h1 className="mb-4 font-heading text-xl font-semibold text-text">Overview</h1>
-      {!isLoading && services?.length === 0 ? (
+      {isError ? (
+        <p className="text-sm text-failed">Failed to load services. Retrying automatically.</p>
+      ) : !isLoading && services?.length === 0 ? (
         <p className="text-sm text-text-muted">
           No services registered yet. Services appear here once a deployment webhook fires.
         </p>
@@ -19,14 +20,9 @@ export function Overview() {
           {isLoading
             ? Array.from({ length: 6 }, (_, i) => <ServiceCardSkeleton key={i} />)
             : services?.map((service) => (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => navigate(`/services/${service.name}`)}
-                  className="w-full text-left"
-                >
+                <Link key={service.id} to={`/services/${service.name}`} className="block">
                   <ServiceCard service={service} />
-                </button>
+                </Link>
               ))}
         </div>
       )}

@@ -34,12 +34,12 @@ export function ServiceCard({ service }: ServiceCardProps) {
       </div>
 
       <div className="text-xs text-text-muted">
-        {shortSha ? (
+        {latest_deploy ? (
           <span>
-            {shortSha} by {latest_deploy?.author ?? 'unknown'}
-            {latest_deploy?.finished_at
+            {shortSha ?? latest_deploy.status} by {latest_deploy.author ?? 'unknown'}
+            {latest_deploy.finished_at
               ? ` — ${formatDistanceToNow(new Date(latest_deploy.finished_at), { addSuffix: true })}`
-              : ''}
+              : ' — in progress'}
           </span>
         ) : (
           <span>No deploys yet</span>
