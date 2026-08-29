@@ -45,6 +45,43 @@
         "justifyMode": "auto",
         "textMode": "auto"
       }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Lead Time for Changes (median)",
+      "description": "Median seconds from commit to deploy (dora_lead_time, percentile_cont(0.5)).",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  percentile_cont(0.5) WITHIN GROUP (ORDER BY lead_time_seconds) AS value\nFROM dora_lead_time\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(finished_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
     }
   ],
   "refresh": "1m",
