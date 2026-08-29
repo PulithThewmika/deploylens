@@ -1,4 +1,4 @@
-import type { Deployment } from '../types/deployment'
+import type { Deployment, TimelineStage } from '../types/deployment'
 
 type PipelineTimelineProps = {
   deployments: Deployment[]
@@ -26,7 +26,19 @@ function PipelineRow({ deployment }: PipelineRowProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="w-24 shrink-0 truncate font-heading text-sm text-text-muted">{shortSha}</span>
-      <div className="flex h-6 flex-1 overflow-hidden rounded" />
+      <div className="flex h-6 flex-1 gap-0.5 overflow-hidden rounded">
+        {deployment.timeline.map((stage) => (
+          <PipelineStage key={stage.stage} stage={stage} />
+        ))}
+      </div>
     </div>
   )
+}
+
+type PipelineStageProps = {
+  stage: TimelineStage
+}
+
+function PipelineStage({ stage }: PipelineStageProps) {
+  return <div className="h-full flex-1 bg-border" title={stage.stage} />
 }
