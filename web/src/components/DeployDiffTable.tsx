@@ -27,10 +27,23 @@ export function DeployDiffTable({ metrics }: DeployDiffTableProps) {
             <td className="px-3 py-2 text-text">{METRIC_LABELS[m.metric] ?? m.metric}</td>
             <td className="px-3 py-2 text-text-muted">{m.deploy_a ?? '—'}</td>
             <td className="px-3 py-2 text-text-muted">{m.deploy_b ?? '—'}</td>
-            <td className="px-3 py-2 text-text-muted">{m.change_pct ?? '—'}</td>
+            <td className={`px-3 py-2 font-medium ${changeColorClass(m.change_pct)}`}>{formatChange(m.change_pct)}</td>
           </tr>
         ))}
       </tbody>
     </table>
   )
+}
+
+function changeColorClass(changePct: number | null): string {
+  if (changePct === null) return 'text-text-muted'
+  if (changePct < 0) return 'text-healthy'
+  if (changePct > 0) return 'text-failed'
+  return 'text-text-muted'
+}
+
+function formatChange(changePct: number | null): string {
+  if (changePct === null) return '—'
+  const sign = changePct > 0 ? '+' : ''
+  return `${sign}${changePct}%`
 }
