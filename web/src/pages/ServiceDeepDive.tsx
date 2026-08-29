@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { DeployDiffTable } from '../components/DeployDiffTable'
 import { GrafanaPanel } from '../components/GrafanaPanel'
 import { PipelineTimeline } from '../components/PipelineTimeline'
+import { useCompare } from '../hooks/useCompare'
 import { useDeployments } from '../hooks/useDeployments'
 import { useDORA } from '../hooks/useDORA'
 import { useServices } from '../hooks/useServices'
@@ -55,6 +57,10 @@ type CompareSectionProps = {
 function CompareSection({ deployments }: CompareSectionProps) {
   const [active, setActive] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
+  const { data: compareResult, isLoading: compareLoading, isError: compareError } = useCompare(
+    selected[0] ?? null,
+    selected[1] ?? null,
+  )
 
   function toggle(id: number) {
     setSelected((prev) => {
@@ -102,6 +108,13 @@ function CompareSection({ deployments }: CompareSectionProps) {
               </label>
             )
           })}
+          {selected.length === 2 && (
+            <>
+              {compareError && <p className="text-sm text-failed">Failed to load comparison.</p>}
+              {compareLoading && <div className="h-32 animate-pulse rounded-lg border border-border bg-surface" />}
+              {compareResult && <DeployDiffTable metrics={compareResult.metrics} />}
+            </>
+          )}
         </div>
       )}
     </section>
