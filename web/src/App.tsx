@@ -4,6 +4,7 @@ import { AppLayout } from './components/layout/AppLayout'
 import { Overview } from './pages/Overview'
 import { ServiceDeepDive } from './pages/ServiceDeepDive'
 import { DeployDetail } from './pages/DeployDetail'
+import { Chat } from './pages/Chat'
 
 const queryClient = new QueryClient()
 
@@ -25,7 +26,7 @@ function App() {
             <Route path="/services" element={<PlaceholderPage title="Services" />} />
             <Route path="/services/:name" element={<ServiceDeepDive />} />
             <Route path="/deployments/:id" element={<DeployDetail />} />
-            <Route path="/chat" element={<PlaceholderPage title="Chat" />} />
+            <Route path="/chat" element={<Chat />} />
           </Route>
         </Routes>
       </BrowserRouter>
