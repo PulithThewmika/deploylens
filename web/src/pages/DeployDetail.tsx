@@ -34,7 +34,10 @@ export function DeployDetail() {
         <PipelineTimeline deployments={[toDeployment(deployment)]} size="large" />
       </section>
       <section className="flex flex-col gap-3">
-        <h2 className="font-heading text-sm font-semibold text-text">Health evidence</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading text-sm font-semibold text-text">Health evidence</h2>
+          <GrafanaTimeWindowLink deployment={deployment} />
+        </div>
         {deployment.health_assessment && deployment.health_evidence.length > 0 ? (
           <HealthEvidenceTable evidence={deployment.health_evidence} />
         ) : (
@@ -42,6 +45,31 @@ export function DeployDetail() {
         )}
       </section>
     </div>
+  )
+}
+
+const THIRTY_MIN_MS = 30 * 60 * 1000
+const FIFTEEN_MIN_MS = 15 * 60 * 1000
+
+function GrafanaTimeWindowLink({ deployment }: { deployment: DeploymentDetail }) {
+  if (!deployment.finished_at || !deployment.service) return null
+
+  const finishedAtMs = new Date(deployment.finished_at).getTime()
+  const params = new URLSearchParams({
+    'var-service': deployment.service.name,
+    from: String(finishedAtMs - THIRTY_MIN_MS),
+    to: String(finishedAtMs + FIFTEEN_MIN_MS),
+  })
+
+  return (
+    <a
+      href={`/grafana/d/deploy-timeline/deploy-timeline?${params.toString()}`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-xs text-accent hover:underline"
+    >
+      View in Grafana →
+    </a>
   )
 }
 
