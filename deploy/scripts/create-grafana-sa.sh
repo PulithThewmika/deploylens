@@ -34,19 +34,19 @@ auth=("-u" "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}")
 
 echo "Waiting for Grafana at ${GRAFANA_URL} ..."
 for _ in $(seq 1 30); do
-  if curl -sf "${GRAFANA_URL}/api/health" > /dev/null; then
+  if curl -sSf "${GRAFANA_URL}/api/health" > /dev/null; then
     break
   fi
   sleep 2
 done
-if ! curl -sf "${GRAFANA_URL}/api/health" > /dev/null; then
+if ! curl -sSf "${GRAFANA_URL}/api/health" > /dev/null; then
   echo "Grafana did not become healthy at ${GRAFANA_URL} — is 'make up' running?" >&2
   exit 1
 fi
 
 # ── Find or create the service account (Viewer role only) ──────────
 existing_id=$(
-  curl -sf "${auth[@]}" \
+  curl -sSf "${auth[@]}" \
     "${GRAFANA_URL}/api/serviceaccounts/search?query=${SA_NAME}" \
   | python -c "
 import json, sys
@@ -62,7 +62,7 @@ if [ -n "$existing_id" ]; then
 else
   echo "Creating service account '${SA_NAME}' (Viewer role) ..."
   sa_id=$(
-    curl -sf "${auth[@]}" -X POST "${GRAFANA_URL}/api/serviceaccounts" \
+    curl -sSf "${auth[@]}" -X POST "${GRAFANA_URL}/api/serviceaccounts" \
       -H "Content-Type: application/json" \
       -d "{\"name\": \"${SA_NAME}\", \"role\": \"Viewer\", \"isDisabled\": false}" \
     | python -c "import json, sys; print(json.load(sys.stdin)['id'])"
@@ -72,7 +72,7 @@ fi
 
 # ── Mint a token only if none exists yet (secrets aren't retrievable) ──
 token_count=$(
-  curl -sf "${auth[@]}" "${GRAFANA_URL}/api/serviceaccounts/${sa_id}/tokens" \
+  curl -sSf "${auth[@]}" "${GRAFANA_URL}/api/serviceaccounts/${sa_id}/tokens" \
     | python -c "import json, sys; print(len(json.load(sys.stdin)))"
 )
 
@@ -84,7 +84,7 @@ fi
 
 echo "Minting a token for service account ${sa_id} ..."
 token=$(
-  curl -sf "${auth[@]}" -X POST "${GRAFANA_URL}/api/serviceaccounts/${sa_id}/tokens" \
+  curl -sSf "${auth[@]}" -X POST "${GRAFANA_URL}/api/serviceaccounts/${sa_id}/tokens" \
     -H "Content-Type: application/json" \
     -d '{"name": "shell-proxy-token"}' \
   | python -c "import json, sys; print(json.load(sys.stdin)['key'])"
@@ -102,6 +102,11 @@ if grep -q "^GRAFANA_SERVICE_ACCOUNT_TOKEN=" "$ENV_FILE" 2>/dev/null; then
   sed -i.bak "s|^GRAFANA_SERVICE_ACCOUNT_TOKEN=.*|GRAFANA_SERVICE_ACCOUNT_TOKEN=${token}|" "$ENV_FILE"
   rm -f "${ENV_FILE}.bak"
 else
+  # Ensure the file ends in a newline before appending, or the new
+  # variable gets glued onto the previous line instead of its own.
+  if [ -s "$ENV_FILE" ] && [ "$(tail -c1 "$ENV_FILE")" != "" ]; then
+    echo >> "$ENV_FILE"
+  fi
   echo "GRAFANA_SERVICE_ACCOUNT_TOKEN=${token}" >> "$ENV_FILE"
 fi
 
