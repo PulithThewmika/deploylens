@@ -1,5 +1,8 @@
 import { useParams } from 'react-router-dom'
+import { PipelineTimeline } from '../components/PipelineTimeline'
 import { useDeployment } from '../hooks/useDeployment'
+import type { Deployment } from '../types/deployment'
+import type { DeploymentDetail } from '../types/deploymentDetail'
 
 export function DeployDetail() {
   const { id } = useParams<{ id: string }>()
@@ -25,8 +28,31 @@ export function DeployDetail() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <DeployMetadata deployment={deployment} />
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-sm font-semibold text-text">Pipeline timeline</h2>
+        <PipelineTimeline deployments={[toDeployment(deployment)]} size="large" />
+      </section>
     </div>
   )
+}
+
+function toDeployment(d: DeploymentDetail): Deployment {
+  return {
+    id: d.id,
+    service_id: d.service_id,
+    service_name: d.service?.name ?? '',
+    commit_sha: d.commit_sha,
+    branch: d.branch,
+    author: d.author,
+    status: d.status,
+    image_tag: d.image_tag,
+    started_at: d.started_at,
+    finished_at: d.finished_at,
+    health: d.health_assessment
+      ? { score: d.health_assessment.score, verdict: d.health_assessment.verdict }
+      : null,
+    timeline: d.timeline,
+  }
 }
 
 function DeployMetadata({ deployment }: { deployment: NonNullable<ReturnType<typeof useDeployment>['data']> }) {
