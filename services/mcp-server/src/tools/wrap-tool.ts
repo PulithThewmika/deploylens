@@ -1,4 +1,7 @@
-type ToolResult = { content: { type: "text"; text: string }[] };
+type ToolResult = {
+  content: { type: "text"; text: string }[];
+  isError?: boolean;
+};
 type ToolHandler<T> = (input: T) => Promise<ToolResult>;
 
 export function wrapTool<T>(
@@ -29,6 +32,7 @@ export function wrapTool<T>(
             }),
           },
         ],
+        isError: true,
       };
     }
   };

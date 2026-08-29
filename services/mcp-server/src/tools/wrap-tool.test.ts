@@ -11,6 +11,7 @@ describe("wrapTool", () => {
     const result = await wrapped({ foo: 1 });
 
     expect(JSON.parse(result.content[0].text)).toEqual({ summary: "ok" });
+    expect(result.isError).toBeUndefined();
   });
 
   it("catches thrown errors and returns structured error response", async () => {
@@ -24,6 +25,7 @@ describe("wrapTool", () => {
 
     expect(parsed.error).toBe("connection refused");
     expect(parsed.summary).toBe("query_metrics failed: connection refused");
+    expect(result.isError).toBe(true);
   });
 
   it("handles non-Error throws", async () => {
