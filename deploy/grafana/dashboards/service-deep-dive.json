@@ -223,6 +223,52 @@
         "dedupStrategy": "none",
         "sortOrder": "Descending"
       }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Health Score History",
+      "description": "health_assessments.score over time per deployment.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  ha.assessed_at AS time,\n  ha.score AS value,\n  s.name AS metric\nFROM health_assessments ha\nJOIN deployments d ON d.id = ha.deployment_id\nJOIN services s ON s.id = d.service_id\nWHERE ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(ha.assessed_at)\nORDER BY ha.assessed_at"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "pointSize": 5,
+            "showPoints": "always"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 50 },
+              { "color": "green", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
     }
   ],
   "refresh": "30s",
