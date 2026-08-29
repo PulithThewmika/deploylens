@@ -1,0 +1,118 @@
+import { useRef, useState } from 'react'
+import { parseSSEStream } from '../lib/sse'
+import type { ChatMessage, ChatRequestMessage } from '../types/chat'
+
+function toWireFormat(messages: ChatMessage[]): ChatRequestMessage[] {
+  return messages.map((m) =>
+    m.role === 'user'
+      ? { role: 'user', content: m.content }
+      : {
+          role: 'assistant',
+          content: m.parts
+            .filter((p) => p.type === 'text')
+            .map((p) => p.text)
+            .join(''),
+        },
+  )
+}
+
+function appendText(messages: ChatMessage[], assistantId: string, text: string): ChatMessage[] {
+  return messages.map((m) => {
+    if (m.id !== assistantId || m.role !== 'assistant') return m
+    const lastPart = m.parts[m.parts.length - 1]
+    if (lastPart?.type === 'text') {
+      return { ...m, parts: [...m.parts.slice(0, -1), { type: 'text', text: lastPart.text + text }] }
+    }
+    return { ...m, parts: [...m.parts, { type: 'text', text }] }
+  })
+}
+
+function appendToolCall(
+  messages: ChatMessage[],
+  assistantId: string,
+  data: { tool: string; input: unknown; result: string; is_error: boolean },
+): ChatMessage[] {
+  return messages.map((m) => {
+    if (m.id !== assistantId || m.role !== 'assistant') return m
+    return {
+      ...m,
+      parts: [
+        ...m.parts,
+        { type: 'tool_call', tool: data.tool, input: data.input, result: data.result, is_error: data.is_error },
+      ],
+    }
+  })
+}
+
+export function useChatSession() {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // React doesn't guarantee a functional setState updater runs synchronously,
+  // so `messages` (the state value) can't be trusted as an up-to-date source
+  // of truth for building the next request body. This ref is: synchronous
+  // updates to it are visible immediately to the very next line of code, so
+  // two sendMessage() calls racing in the same tick still compose correctly
+  // instead of one silently overwriting the other's just-appended message.
+  const messagesRef = useRef<ChatMessage[]>([])
+  // isStreaming (state) can't gate re-entrancy either: two sendMessage() calls
+  // fired in the same tick both read isStreaming as false before either
+  // commits. This ref-based guard is checked and set synchronously, so the
+  // second call bails out immediately instead of starting a second in-flight
+  // request that would race the first to clear isStreaming via `finally`.
+  const streamingRef = useRef(false)
+
+  function updateMessages(updater: (prev: ChatMessage[]) => ChatMessage[]) {
+    const next = updater(messagesRef.current)
+    messagesRef.current = next
+    setMessages(next)
+  }
+
+  async function sendMessage(content: string) {
+    if (streamingRef.current) return
+    streamingRef.current = true
+
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content }
+    const assistantId = crypto.randomUUID()
+
+    let historyForRequest: ChatMessage[] = []
+    updateMessages((prev) => {
+      historyForRequest = [...prev, userMessage]
+      return [...historyForRequest, { id: assistantId, role: 'assistant', parts: [] }]
+    })
+    setError(null)
+    setIsStreaming(true)
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: toWireFormat(historyForRequest) }),
+      })
+
+      if (!res.ok || !res.body) {
+        setError('Unable to reach the chat service.')
+        return
+      }
+
+      for await (const evt of parseSSEStream(res.body)) {
+        const data = JSON.parse(evt.data)
+        if (evt.event === 'text') {
+          updateMessages((prev) => appendText(prev, assistantId, data.text))
+        } else if (evt.event === 'tool_call') {
+          updateMessages((prev) => appendToolCall(prev, assistantId, data))
+        } else if (evt.event === 'error') {
+          setError(data.error)
+        }
+      }
+    } catch {
+      setError('Connection to the chat service was lost.')
+    } finally {
+      streamingRef.current = false
+      setIsStreaming(false)
+    }
+  }
+
+  return { messages, isStreaming, error, sendMessage }
+}
