@@ -156,6 +156,47 @@
         "justifyMode": "auto",
         "textMode": "auto"
       }
+    },
+    {
+      "id": 5,
+      "type": "heatmap",
+      "title": "Deploys per Day",
+      "description": "Deploy count bucketed by day from dora_deploy_frequency.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  deploy_date AS time,\n  SUM(deploy_count) AS value\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nGROUP BY deploy_date\nORDER BY deploy_date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": true,
+        "calculation": {
+          "xBuckets": { "mode": "size", "value": "1d" }
+        },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Greens",
+          "steps": 64
+        },
+        "yAxis": {
+          "unit": "short"
+        },
+        "cellGap": 2,
+        "tooltip": { "show": true, "yHistogram": false },
+        "legend": { "show": true }
+      }
     }
   ],
   "refresh": "1m",
