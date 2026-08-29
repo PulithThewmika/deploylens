@@ -11,6 +11,8 @@ def _mock_deploy_list_row(
     id=1, service_id=1, service_name="orders", commit_sha="abc1234",
     branch="main", author="dev", status="deployed", image_tag="abc1234",
     started_at=None, finished_at=None, health_score=90, health_verdict="healthy",
+    commit_at=None, build_status=None, build_duration_s=None,
+    argocd_revision=None, sync_status=None, assessed_at=None,
 ):
     row = MagicMock()
     row.id = id
@@ -25,6 +27,12 @@ def _mock_deploy_list_row(
     row.finished_at = finished_at or datetime(2026, 8, 1, 10, 5, 0, tzinfo=timezone.utc)
     row.health_score = health_score
     row.health_verdict = health_verdict
+    row.commit_at = commit_at
+    row.build_status = build_status
+    row.build_duration_s = build_duration_s
+    row.argocd_revision = argocd_revision
+    row.sync_status = sync_status
+    row.assessed_at = assessed_at
     return row
 
 
@@ -97,6 +105,30 @@ async def test_list_deployments_returns_filtered_list(client, mock_session):
     assert len(data) == 2
     assert data[0]["service_name"] == "orders"
     assert data[0]["health"]["score"] == 90
+
+
+@pytest.mark.asyncio
+async def test_list_deployments_includes_timeline(client, mock_session):
+    result = MagicMock()
+    result.fetchall.return_value = [
+        _mock_deploy_list_row(
+            commit_at=datetime(2026, 8, 1, 9, 55, 0, tzinfo=timezone.utc),
+            build_status="completed",
+            build_duration_s=90.0,
+            argocd_revision="def5678",
+            sync_status="completed",
+            assessed_at=datetime(2026, 8, 1, 10, 20, 0, tzinfo=timezone.utc),
+        ),
+    ]
+    mock_session.execute.return_value = result
+
+    async with AsyncClient(transport=ASGITransport(app=client), base_url="http://test") as ac:
+        resp = await ac.get("/api/deployments")
+
+    assert resp.status_code == 200
+    data = resp.json()
+    stages = [stage["stage"] for stage in data[0]["timeline"]]
+    assert stages == ["commit", "build", "sync", "deploy", "assess"]
 
 
 @pytest.mark.asyncio
