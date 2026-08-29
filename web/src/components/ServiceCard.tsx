@@ -1,3 +1,4 @@
+import { formatDistanceToNow } from 'date-fns'
 import { HealthRing } from './HealthRing'
 import type { Service } from '../types/service'
 
@@ -25,7 +26,9 @@ export function ServiceCard({ service }: ServiceCardProps) {
         {shortSha ? (
           <span>
             {shortSha} by {latest_deploy?.author ?? 'unknown'}
-            {latest_deploy?.finished_at ? ` — ${latest_deploy.finished_at}` : ''}
+            {latest_deploy?.finished_at
+              ? ` — ${formatDistanceToNow(new Date(latest_deploy.finished_at), { addSuffix: true })}`
+              : ''}
           </span>
         ) : (
           <span>No deploys yet</span>
