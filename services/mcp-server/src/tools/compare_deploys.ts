@@ -72,15 +72,11 @@ function buildPromQL(
 }
 
 async function queryScalar(promql: string, time: string): Promise<number | null> {
-  try {
-    const results = await instantQuery(promql, time);
-    if (results.length === 0) return null;
-    const val = parseFloat(results[0].value[1]);
-    if (Number.isNaN(val)) return null;
-    return val;
-  } catch {
-    return null;
-  }
+  const results = await instantQuery(promql, time);
+  if (results.length === 0) return null;
+  const val = parseFloat(results[0].value[1]);
+  if (Number.isNaN(val)) return null;
+  return val;
 }
 
 async function fetchMetrics(
@@ -143,12 +139,12 @@ export async function compareDeploys(input: {
 
   if (!rowA) {
     return {
-      content: [{ type: "text", text: JSON.stringify({ error: `Deployment ${input.deployment_id_a} not found` }) }],
+      content: [{ type: "text", text: JSON.stringify({ error: `Deployment ${input.deployment_id_a} not found`, summary: `compare_deploys failed: deployment ${input.deployment_id_a} not found` }) }],
     };
   }
   if (!rowB) {
     return {
-      content: [{ type: "text", text: JSON.stringify({ error: `Deployment ${input.deployment_id_b} not found` }) }],
+      content: [{ type: "text", text: JSON.stringify({ error: `Deployment ${input.deployment_id_b} not found`, summary: `compare_deploys failed: deployment ${input.deployment_id_b} not found` }) }],
     };
   }
 
@@ -158,6 +154,7 @@ export async function compareDeploys(input: {
         type: "text",
         text: JSON.stringify({
           error: "Both deployments must belong to the same service",
+          summary: `compare_deploys failed: deployments belong to different services (${rowA.service_name} vs ${rowB.service_name})`,
           deploy_a_service: rowA.service_name,
           deploy_b_service: rowB.service_name,
         }),
@@ -171,6 +168,7 @@ export async function compareDeploys(input: {
         type: "text",
         text: JSON.stringify({
           error: "Both deployments must have finished_at timestamps",
+          summary: "compare_deploys failed: one or both deployments have not finished yet",
           deploy_a_finished: !!rowA.finished_at,
           deploy_b_finished: !!rowB.finished_at,
         }),
@@ -180,17 +178,22 @@ export async function compareDeploys(input: {
 
   let metricsA: MetricValues;
   let metricsB: MetricValues;
-  let promError = false;
 
   try {
     [metricsA, metricsB] = await Promise.all([
       fetchMetrics(rowA.service_name, rowA.namespace, rowA.finished_at),
       fetchMetrics(rowB.service_name, rowB.namespace, rowB.finished_at),
     ]);
-  } catch {
-    promError = true;
-    metricsA = { error_rate: null, latency_p99_ms: null, restarts: null };
-    metricsB = { error_rate: null, latency_p99_ms: null, restarts: null };
+  } catch (err) {
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          error: `Prometheus query failed: ${err instanceof Error ? err.message : String(err)}`,
+          summary: `compare_deploys failed: Prometheus unreachable or query error`,
+        }),
+      }],
+    };
   }
 
   const diffs: MetricDiff[] = [
@@ -221,9 +224,7 @@ export async function compareDeploys(input: {
     ? `${rowB.health_score}/100 (${rowB.health_verdict})`
     : "unassessed";
 
-  const summary = promError
-    ? `Comparing ${rowA.service_name} deploys #${rowA.id} vs #${rowB.id} — Prometheus unreachable, showing DB health only: ${healthA} vs ${healthB}`
-    : `Comparing ${rowA.service_name} deploys #${rowA.id} (${healthA}) vs #${rowB.id} (${healthB})`;
+  const summary = `Comparing ${rowA.service_name} deploys #${rowA.id} (${healthA}) vs #${rowB.id} (${healthB})`;
 
   return {
     content: [{
@@ -248,7 +249,6 @@ export async function compareDeploys(input: {
           health_verdict: rowB.health_verdict,
         },
         metrics: diffs,
-        ...(promError ? { warning: "Prometheus unreachable — metric values are null" } : {}),
       }),
     }],
   };
