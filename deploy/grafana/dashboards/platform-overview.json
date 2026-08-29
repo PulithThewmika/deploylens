@@ -240,6 +240,50 @@
         "sortBy": [{ "displayName": "service", "desc": false }],
         "footer": { "show": false }
       }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Active Alerts",
+      "description": "Currently unresolved alerts, most recent first.",
+      "gridPos": { "h": 10, "w": 10, "x": 14, "y": 6 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  a.fired_at,\n  s.name AS service,\n  a.severity,\n  a.title\nFROM alerts a\nJOIN services s ON s.id = a.service_id\nWHERE a.resolved_at IS NULL\nORDER BY a.fired_at DESC\nLIMIT 50"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "severity" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "critical": { "text": "critical", "color": "red" } } },
+                  { "type": "value", "options": { "warning": { "text": "warning", "color": "orange" } } }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "fired_at", "desc": true }],
+        "footer": { "show": false }
+      }
     }
   ],
   "refresh": "30s",
