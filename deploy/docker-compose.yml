@@ -78,8 +78,6 @@ services:
       dockerfile: Dockerfile
     container_name: deploylens-mcp
     restart: unless-stopped
-    ports:
-      - "3001:3001"
     environment:
       DATABASE_URL: postgresql://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}

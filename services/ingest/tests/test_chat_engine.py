@@ -139,6 +139,60 @@ async def test_run_chat_turn_includes_tool_call_results():
 
 
 @pytest.mark.asyncio
+async def test_run_chat_turn_runs_parallel_tool_calls_concurrently():
+    import asyncio
+    import time
+
+    block_a = _tool_use_block("tool_a", "get_dora_metrics", {})
+    block_b = _tool_use_block("tool_b", "get_active_alerts", {})
+    first_final = _final_message("tool_use", [block_a, block_b])
+    first_stream = _FakeStream([], first_final)
+
+    second_final = _final_message("end_turn", [_text_block("done")])
+    second_stream = _FakeStream(["done"], second_final)
+
+    mock_client = MagicMock()
+    mock_client.messages.stream.side_effect = [
+        _FakeStreamManager(first_stream),
+        _FakeStreamManager(second_stream),
+    ]
+
+    call_started_at: list[float] = []
+
+    async def slow_call_tool(name, arguments):
+        call_started_at.append(time.monotonic())
+        await asyncio.sleep(0.05)
+        return MagicMock(content=[MagicMock(text="{}")], is_error=False)
+
+    mock_mcp_session = AsyncMock()
+    mock_mcp_session.call_tool.side_effect = slow_call_tool
+
+    @asynccontextmanager
+    async def fake_mcp_session():
+        yield mock_mcp_session
+
+    with (
+        patch("app.chat_engine.anthropic.AsyncAnthropic", return_value=mock_client),
+        patch("app.chat_engine.mcp_session", fake_mcp_session),
+    ):
+        start = time.monotonic()
+        frames = [
+            frame
+            async for frame in run_chat_turn(
+                [ChatMessage(role="user", content="give me an overview")], tools=[]
+            )
+        ]
+        elapsed = time.monotonic() - start
+
+    tool_call_frames = [f for f in frames if f.startswith("event: tool_call\n")]
+    assert len(tool_call_frames) == 2
+    # Two 50ms calls run concurrently should take well under 100ms total.
+    assert elapsed < 0.09
+    assert len(call_started_at) == 2
+    assert abs(call_started_at[0] - call_started_at[1]) < 0.02
+
+
+@pytest.mark.asyncio
 async def test_run_chat_turn_stops_after_max_iterations():
     tool_block = _tool_use_block("tool_1", "list_deployments", {})
     final = _final_message("tool_use", [tool_block])

@@ -6,6 +6,7 @@ for a tool, call it via MCP, stream the result, and feed it back until
 Claude produces a final answer (or the iteration cap is hit).
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -104,16 +105,23 @@ async def run_chat_turn(
         if final_message.stop_reason != "tool_use":
             return
 
+        tool_use_blocks = [b for b in final_message.content if b.type == "tool_use"]
+        # Claude can request several independent tools in one turn — run
+        # them concurrently rather than one round trip at a time.
+        outcomes = await asyncio.gather(
+            *(_call_mcp_tool(b.name, b.input) for b in tool_use_blocks),
+            return_exceptions=True,
+        )
+
         tool_results = []
-        for block in final_message.content:
-            if block.type != "tool_use":
-                continue
-            try:
-                result_text, is_error = await _call_mcp_tool(block.name, block.input)
-            except Exception:
-                logger.exception("MCP tool call failed mid-stream: %s", block.name)
+        for block, outcome in zip(tool_use_blocks, outcomes):
+            if isinstance(outcome, BaseException):
+                logger.exception(
+                    "MCP tool call failed mid-stream: %s", block.name, exc_info=outcome
+                )
                 yield sse("error", {"error": "MCP server unavailable"})
                 return
+            result_text, is_error = outcome
             yield sse(
                 "tool_call",
                 {
