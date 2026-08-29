@@ -56,6 +56,12 @@ export function useChatSession() {
   // two sendMessage() calls racing in the same tick still compose correctly
   // instead of one silently overwriting the other's just-appended message.
   const messagesRef = useRef<ChatMessage[]>([])
+  // isStreaming (state) can't gate re-entrancy either: two sendMessage() calls
+  // fired in the same tick both read isStreaming as false before either
+  // commits. This ref-based guard is checked and set synchronously, so the
+  // second call bails out immediately instead of starting a second in-flight
+  // request that would race the first to clear isStreaming via `finally`.
+  const streamingRef = useRef(false)
 
   function updateMessages(updater: (prev: ChatMessage[]) => ChatMessage[]) {
     const next = updater(messagesRef.current)
@@ -64,6 +70,9 @@ export function useChatSession() {
   }
 
   async function sendMessage(content: string) {
+    if (streamingRef.current) return
+    streamingRef.current = true
+
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content }
     const assistantId = crypto.randomUUID()
 
@@ -100,6 +109,7 @@ export function useChatSession() {
     } catch {
       setError('Connection to the chat service was lost.')
     } finally {
+      streamingRef.current = false
       setIsStreaming(false)
     }
   }
