@@ -7,7 +7,46 @@
   "graphTooltip": 1,
   "id": null,
   "links": [],
-  "panels": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "ArgoCD Sync Status",
+      "description": "Current ArgoCD application health status (argocd_app_health_status). Only the status currently at value 1 is shown.",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "deploylens-prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "argocd_app_health_status{name=~\"$service\"} == 1",
+          "legendFormat": "{{health_status}}",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "background",
+        "justifyMode": "auto",
+        "textMode": "name"
+      }
+    }
+  ],
   "refresh": "30s",
   "schemaVersion": 39,
   "tags": ["deploylens", "service-deep-dive"],
