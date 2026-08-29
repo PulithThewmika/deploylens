@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { HealthEvidenceTable } from '../components/HealthEvidenceTable'
 import { PipelineTimeline } from '../components/PipelineTimeline'
 import { useDeployment } from '../hooks/useDeployment'
 import type { Deployment } from '../types/deployment'
@@ -31,6 +32,14 @@ export function DeployDetail() {
       <section className="flex flex-col gap-3">
         <h2 className="font-heading text-sm font-semibold text-text">Pipeline timeline</h2>
         <PipelineTimeline deployments={[toDeployment(deployment)]} size="large" />
+      </section>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-sm font-semibold text-text">Health evidence</h2>
+        {deployment.health_assessment && deployment.health_evidence.length > 0 ? (
+          <HealthEvidenceTable evidence={deployment.health_evidence} />
+        ) : (
+          <p className="text-sm text-text-muted">Assessment pending.</p>
+        )}
       </section>
     </div>
   )
