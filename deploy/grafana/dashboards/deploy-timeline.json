@@ -173,7 +173,15 @@
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "links": [
+            {
+              "title": "Open Service Deep Dive",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${__data.fields.service}&from=${__data.fields.started_at:time}&to=${__data.fields.finished_at:time:end}",
+              "targetBlank": false
+            }
+          ]
+        },
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "verdict" },
