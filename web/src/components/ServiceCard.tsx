@@ -1,3 +1,4 @@
+import { HealthRing } from './HealthRing'
 import type { Service } from '../types/service'
 
 type ServiceCardProps = {
@@ -17,9 +18,7 @@ export function ServiceCard({ service }: ServiceCardProps) {
             {namespace}
           </span>
         </div>
-        <span className="text-sm font-medium text-text-muted">
-          {health?.score ?? '—'}
-        </span>
+        <HealthRing score={health?.score ?? null} verdict={health?.verdict ?? null} size={48} />
       </div>
 
       <div className="text-xs text-text-muted">
