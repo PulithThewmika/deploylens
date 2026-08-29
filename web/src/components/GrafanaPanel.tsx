@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type GrafanaPanelProps = {
   uid: string
@@ -22,6 +22,27 @@ export function GrafanaPanel({ uid, panelId, service, from = 'now-6h', to = 'now
   })
   const src = `/api/grafana/proxy?${params.toString()}`
 
+  useEffect(() => {
+    setStatus('loading')
+    let cancelled = false
+    // <iframe onError> only fires on network-level failures — a 502 from
+    // the proxy (e.g. Grafana unreachable) still "loads" its error body
+    // successfully and fires onLoad, never onError. A GET preflight lets
+    // us catch real backend failures the iframe itself can't detect.
+    // (The route is GET-only — HEAD returns 405 — so this duplicates the
+    // iframe's own request; acceptable for two lightweight panels a page.)
+    fetch(src)
+      .then((res) => {
+        if (!cancelled && !res.ok) setStatus('error')
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [src])
+
   return (
     <div className="relative h-64 overflow-hidden rounded-lg border border-border bg-surface">
       {status === 'loading' && (
@@ -38,7 +59,7 @@ export function GrafanaPanel({ uid, panelId, service, from = 'now-6h', to = 'now
         title={title}
         src={src}
         className={`h-full w-full border-0 ${status === 'loaded' ? '' : 'invisible'}`}
-        onLoad={() => setStatus('loaded')}
+        onLoad={() => setStatus((s) => (s === 'error' ? s : 'loaded'))}
         onError={() => setStatus('error')}
       />
     </div>
