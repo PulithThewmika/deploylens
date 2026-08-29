@@ -10,7 +10,7 @@ export function DeployDetail() {
   const deployId = Number(id)
   const { data: deployment, isLoading, isError } = useDeployment(deployId)
 
-  if (isError) {
+  if (!Number.isFinite(deployId) || isError) {
     return (
       <div className="p-6">
         <p className="text-sm text-failed">Failed to load deployment.</p>
