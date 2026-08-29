@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import tailwindConfig from '../../tailwind.config'
 
 const VERDICT_COLORS: Record<string, string> = {
   healthy: '#22C55E',
@@ -6,7 +7,7 @@ const VERDICT_COLORS: Record<string, string> = {
   failed: '#EF4444',
 }
 
-const TRACK_COLOR = '#26262E'
+const TRACK_COLOR = tailwindConfig.theme.extend.colors.border
 
 type HealthRingProps = {
   score: number | null
@@ -21,7 +22,7 @@ export function HealthRing({ score, verdict, size = 56 }: HealthRingProps) {
   const isUnknown = score === null
   const clampedScore = Math.min(100, Math.max(0, score ?? 0))
   const targetOffset = isUnknown ? 0 : circumference * (1 - clampedScore / 100)
-  const color = isUnknown ? '#4B5563' : (verdict && VERDICT_COLORS[verdict]) ?? TRACK_COLOR
+  const color = isUnknown ? '#4B5563' : (verdict ? VERDICT_COLORS[verdict] : undefined) ?? TRACK_COLOR
 
   const [swept, setSwept] = useState(false)
   useEffect(() => {
