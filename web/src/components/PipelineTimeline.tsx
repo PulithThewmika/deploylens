@@ -1,4 +1,11 @@
-import { calcStageDurations, formatDuration, normalizeStageStatus, stageLabel, STAGE_STATUS_COLORS } from '../lib/timeline'
+import {
+  calcStageDurations,
+  fillIncompleteTimeline,
+  formatDuration,
+  normalizeStageStatus,
+  stageLabel,
+  STAGE_STATUS_COLORS,
+} from '../lib/timeline'
 import { useElementWidth } from '../hooks/useElementWidth'
 import { useEffect, useState } from 'react'
 import type { Deployment, TimelineStage } from '../types/deployment'
@@ -25,13 +32,14 @@ type PipelineRowProps = {
 
 function PipelineRow({ deployment }: PipelineRowProps) {
   const shortSha = deployment.commit_sha ? deployment.commit_sha.slice(0, 7) : deployment.status
-  const durationsS = calcStageDurations(deployment.timeline)
+  const timeline = fillIncompleteTimeline(deployment.timeline)
+  const durationsS = calcStageDurations(timeline)
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-surface p-3">
       <span className="w-24 shrink-0 truncate font-heading text-sm text-text-muted">{shortSha}</span>
       <div className="flex h-6 flex-1 gap-0.5 overflow-hidden rounded">
-        {deployment.timeline.map((stage, i) => (
+        {timeline.map((stage, i) => (
           <PipelineStage key={stage.stage} stage={stage} durationS={durationsS[i]} />
         ))}
       </div>
