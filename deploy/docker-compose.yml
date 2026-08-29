@@ -41,10 +41,14 @@ services:
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp-server:3001/mcp}
+      GRAFANA_URL: ${GRAFANA_URL:-http://grafana:3000}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN: ${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
       mcp-server:
+        condition: service_started
+      grafana:
         condition: service_started
 
   # ── Detection Agent ─────────────────────────────────────────────
