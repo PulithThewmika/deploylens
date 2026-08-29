@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import { GrafanaPanel } from '../components/GrafanaPanel'
 import { PipelineTimeline } from '../components/PipelineTimeline'
 import { useDeployments } from '../hooks/useDeployments'
 import { useDORA } from '../hooks/useDORA'
@@ -32,6 +33,13 @@ export function ServiceDeepDive() {
         ) : (
           <PipelineTimeline deployments={deployments ?? []} />
         )}
+      </section>
+      <section className="flex flex-col gap-3">
+        <h2 className="font-heading text-sm font-semibold text-text">Metrics</h2>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <GrafanaPanel uid="deploy-timeline" panelId={1} service={name} title="Error Rate" />
+          <GrafanaPanel uid="deploy-timeline" panelId={2} service={name} title="p99 Latency" />
+        </div>
       </section>
     </div>
   )
