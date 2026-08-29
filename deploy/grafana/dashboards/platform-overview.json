@@ -165,6 +165,81 @@
         "justifyMode": "auto",
         "textMode": "auto"
       }
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Services",
+      "description": "All services with their last deploy time and most recent health verdict/score. Click a row to drill into Service Deep Dive.",
+      "gridPos": { "h": 10, "w": 14, "x": 0, "y": 6 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  s.name AS service,\n  (\n    SELECT MAX(d2.finished_at)\n    FROM deployments d2\n    WHERE d2.service_id = s.id AND d2.finished_at IS NOT NULL\n  ) AS last_deploy,\n  latest.verdict,\n  latest.score AS health_score\nFROM services s\nLEFT JOIN LATERAL (\n  SELECT ha.verdict, ha.score\n  FROM health_assessments ha\n  JOIN deployments d ON d.id = ha.deployment_id\n  WHERE d.service_id = s.id\n  ORDER BY ha.assessed_at DESC\n  LIMIT 1\n) latest ON true\nORDER BY s.name"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "links": [
+            {
+              "title": "Open Service Deep Dive",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${__data.fields.service}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "verdict" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "healthy": { "text": "healthy", "color": "green" } } },
+                  { "type": "value", "options": { "degraded": { "text": "degraded", "color": "orange" } } },
+                  { "type": "value", "options": { "failed": { "text": "failed", "color": "red" } } }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "health_score" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "gauge", "mode": "basic" }
+              },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "orange", "value": 50 },
+                    { "color": "green", "value": 80 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "service", "desc": false }],
+        "footer": { "show": false }
+      }
     }
   ],
   "refresh": "30s",
