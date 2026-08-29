@@ -126,6 +126,7 @@ class DeploymentListItem(BaseModel):
     started_at: datetime
     finished_at: datetime | None = None
     health: HealthSummary | None = None
+    timeline: list[TimelineStage] = []
 
 
 class DeploymentDetailWithTimelineResponse(DeploymentDetailResponse):
