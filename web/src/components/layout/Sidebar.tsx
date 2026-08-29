@@ -52,13 +52,14 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   return (
-    <aside className="flex h-screen w-16 shrink-0 flex-col border-r border-border bg-surface md:w-56">
+    <aside className="flex h-dvh w-16 shrink-0 flex-col border-r border-border bg-surface md:w-56">
       <nav className="flex flex-col gap-1 p-2 md:p-3">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
+            aria-label={label}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive
@@ -68,7 +69,9 @@ export function Sidebar() {
             }
           >
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="hidden md:inline">{label}</span>
+            <span className="hidden md:inline" aria-hidden="true">
+              {label}
+            </span>
           </NavLink>
         ))}
       </nav>
