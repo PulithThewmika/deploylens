@@ -37,6 +37,7 @@ import {
   getActiveAlertsSchema,
   getActiveAlerts,
 } from "./tools/get_active_alerts.js";
+import { wrapTool } from "./tools/wrap-tool.js";
 
 const server = new McpServer({
   name: "deploylens",
@@ -48,7 +49,7 @@ server.tool(
   "list_deployments",
   "List recent deployments, optionally filtered by service name or status. Returns a summary highlighting any unhealthy deploys.",
   listDeploymentsSchema,
-  async (input) => listDeployments(input),
+  wrapTool("list_deployments", listDeployments),
 );
 
 // ── Tool: get_deployment ────────────────────────────────────────
@@ -56,7 +57,7 @@ server.tool(
   "get_deployment",
   "Get full details of a specific deployment by ID, including service info, pipeline timeline, and health assessment",
   getDeploymentSchema,
-  async (input) => getDeployment(input),
+  wrapTool("get_deployment", getDeployment),
 );
 
 // ── Tool: get_deploy_health ─────────────────────────────────────
@@ -64,7 +65,7 @@ server.tool(
   "get_deploy_health",
   "Get the health assessment for a deployment with score breakdown and metric evidence (error rate, latency, restarts)",
   getDeployHealthSchema,
-  async (input) => getDeployHealth(input),
+  wrapTool("get_deploy_health", getDeployHealth),
 );
 
 // ── Tool: compare_deploys ───────────────────────────────────────
@@ -72,7 +73,7 @@ server.tool(
   "compare_deploys",
   "Compare two deployments side by side — status, health score, and live Prometheus metrics (error rate, p99 latency, restarts) with change percentages",
   compareDeploysSchema,
-  async (input) => compareDeploys(input),
+  wrapTool("compare_deploys", compareDeploys),
 );
 
 // ── Tool: query_metrics ─────────────────────────────────────────
@@ -80,7 +81,7 @@ server.tool(
   "query_metrics",
   "Query Prometheus metrics for a service by intent (metric enum), not raw PromQL. Returns time series, unit, the actual PromQL executed, and a human-readable summary.",
   queryMetricsSchema,
-  async (input) => queryMetrics(input),
+  wrapTool("query_metrics", queryMetrics),
 );
 
 // ── Tool: query_logs ────────────────────────────────────────────
@@ -88,7 +89,7 @@ server.tool(
   "query_logs",
   "Query application logs from Loki by service name with optional keyword and log-level filters. Returns timestamped log lines, the LogQL query executed, and a summary with level breakdown.",
   queryLogsSchema,
-  async (input) => queryLogs(input),
+  wrapTool("query_logs", queryLogs),
 );
 
 // ── Tool: get_dora_metrics ──────────────────────────────────────
@@ -96,7 +97,7 @@ server.tool(
   "get_dora_metrics",
   "Get DORA metrics (deploy frequency, lead time, change failure rate, MTTR) aggregated over a configurable period. Reads from the authoritative SQL views.",
   getDoraMetricsSchema,
-  async (input) => getDoraMetrics(input),
+  wrapTool("get_dora_metrics", getDoraMetrics),
 );
 
 // ── Tool: get_active_alerts ─────────────────────────────────────
@@ -104,7 +105,7 @@ server.tool(
   "get_active_alerts",
   "Get currently active (unresolved) alerts with deployment linkage, optionally filtered by service or severity.",
   getActiveAlertsSchema,
-  async (input) => getActiveAlerts(input),
+  wrapTool("get_active_alerts", getActiveAlerts),
 );
 
 const TOOL_COUNT = 8;
