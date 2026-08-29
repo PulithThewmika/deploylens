@@ -14,7 +14,18 @@ export function ServiceCard({ service }: ServiceCardProps) {
     <div className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent/50">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-1">
-          <span className="font-heading text-base font-semibold text-text">{name}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-heading text-base font-semibold text-text">{name}</span>
+            {active_alert_count > 0 && (
+              <span
+                className="flex items-center gap-1 rounded-full bg-failed/10 px-1.5 py-0.5 text-xs font-medium text-failed"
+                aria-label={`${active_alert_count} active alert${active_alert_count === 1 ? '' : 's'}`}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-failed" aria-hidden="true" />
+                {active_alert_count}
+              </span>
+            )}
+          </div>
           <span className="w-fit rounded border border-border px-1.5 py-0.5 text-xs text-text-muted">
             {namespace}
           </span>
@@ -34,10 +45,6 @@ export function ServiceCard({ service }: ServiceCardProps) {
           <span>No deploys yet</span>
         )}
       </div>
-
-      {active_alert_count > 0 && (
-        <span className="w-fit text-xs text-failed">{active_alert_count} active alert{active_alert_count === 1 ? '' : 's'}</span>
-      )}
     </div>
   )
 }
