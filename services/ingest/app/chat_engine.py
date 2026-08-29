@@ -70,16 +70,26 @@ async def run_chat_turn(
     current_messages = _to_anthropic_messages(messages)
 
     for _ in range(MAX_TOOL_ITERATIONS):
-        async with client.messages.stream(
-            model=CHAT_MODEL,
-            max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=current_messages,
-            tools=tools,
-        ) as stream:
-            async for text in stream.text_stream:
-                yield sse("text", {"text": text})
-            final_message = await stream.get_final_message()
+        try:
+            async with client.messages.stream(
+                model=CHAT_MODEL,
+                max_tokens=MAX_TOKENS,
+                system=SYSTEM_PROMPT,
+                messages=current_messages,
+                tools=tools,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield sse("text", {"text": text})
+                final_message = await stream.get_final_message()
+        except anthropic.APIError:
+            # Headers are already committed to 200 by the time we're
+            # streaming, so a mid-stream LLM failure can't become an
+            # HTTP 502 — it becomes part of the stream instead. A
+            # pre-flight check in routers/chat.py catches the common
+            # case (missing API key) before the response starts.
+            logger.exception("Anthropic API error mid-stream")
+            yield sse("error", {"error": "LLM service unavailable"})
+            return
 
         current_messages.append(
             {
@@ -98,7 +108,12 @@ async def run_chat_turn(
         for block in final_message.content:
             if block.type != "tool_use":
                 continue
-            result_text, is_error = await _call_mcp_tool(block.name, block.input)
+            try:
+                result_text, is_error = await _call_mcp_tool(block.name, block.input)
+            except Exception:
+                logger.exception("MCP tool call failed mid-stream: %s", block.name)
+                yield sse("error", {"error": "MCP server unavailable"})
+                return
             yield sse(
                 "tool_call",
                 {
