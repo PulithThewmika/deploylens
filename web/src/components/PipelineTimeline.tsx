@@ -42,6 +42,17 @@ type PipelineStageProps = {
   durationS: number
 }
 
+const MIN_SEGMENT_WEIGHT_S = 10
+const MIN_SEGMENT_WIDTH_PX = 24
+
 function PipelineStage({ stage, durationS }: PipelineStageProps) {
-  return <div className="h-full flex-1 bg-border" title={`${stage.stage} (${durationS}s)`} />
+  const flexGrow = Math.max(durationS, MIN_SEGMENT_WEIGHT_S)
+
+  return (
+    <div
+      className="h-full bg-border"
+      style={{ flexGrow, flexBasis: 0, minWidth: MIN_SEGMENT_WIDTH_PX }}
+      title={`${stage.stage} (${durationS}s)`}
+    />
+  )
 }
