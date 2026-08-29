@@ -39,9 +39,13 @@ services:
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp-server:3001/mcp}
     depends_on:
       postgres:
         condition: service_healthy
+      mcp-server:
+        condition: service_started
 
   # ── Detection Agent ─────────────────────────────────────────────
   # Autonomous batch processor that scores deployment health every
@@ -78,6 +82,8 @@ services:
       DATABASE_URL: postgresql://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
+      MCP_TRANSPORT: http
+      MCP_HTTP_PORT: "3001"
     depends_on:
       postgres:
         condition: service_healthy
