@@ -119,6 +119,43 @@
         "showThresholdLabels": false,
         "showThresholdMarkers": true
       }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "MTTR",
+      "description": "Mean time to recovery: average seconds from alert fired to resolved (dora_mttr).",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT AVG(mttr_seconds) AS value\nFROM dora_mttr\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(fired_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
     }
   ],
   "refresh": "1m",
