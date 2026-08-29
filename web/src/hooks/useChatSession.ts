@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { parseSSEStream } from '../lib/sse'
 import type { ChatMessage, ChatRequestMessage } from '../types/chat'
 
@@ -49,12 +49,29 @@ export function useChatSession() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // React doesn't guarantee a functional setState updater runs synchronously,
+  // so `messages` (the state value) can't be trusted as an up-to-date source
+  // of truth for building the next request body. This ref is: synchronous
+  // updates to it are visible immediately to the very next line of code, so
+  // two sendMessage() calls racing in the same tick still compose correctly
+  // instead of one silently overwriting the other's just-appended message.
+  const messagesRef = useRef<ChatMessage[]>([])
+
+  function updateMessages(updater: (prev: ChatMessage[]) => ChatMessage[]) {
+    const next = updater(messagesRef.current)
+    messagesRef.current = next
+    setMessages(next)
+  }
+
   async function sendMessage(content: string) {
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: 'user', content }
-    const historyForRequest = [...messages, userMessage]
     const assistantId = crypto.randomUUID()
 
-    setMessages([...historyForRequest, { id: assistantId, role: 'assistant', parts: [] }])
+    let historyForRequest: ChatMessage[] = []
+    updateMessages((prev) => {
+      historyForRequest = [...prev, userMessage]
+      return [...historyForRequest, { id: assistantId, role: 'assistant', parts: [] }]
+    })
     setError(null)
     setIsStreaming(true)
 
@@ -73,9 +90,9 @@ export function useChatSession() {
       for await (const evt of parseSSEStream(res.body)) {
         const data = JSON.parse(evt.data)
         if (evt.event === 'text') {
-          setMessages((prev) => appendText(prev, assistantId, data.text))
+          updateMessages((prev) => appendText(prev, assistantId, data.text))
         } else if (evt.event === 'tool_call') {
-          setMessages((prev) => appendToolCall(prev, assistantId, data))
+          updateMessages((prev) => appendToolCall(prev, assistantId, data))
         } else if (evt.event === 'error') {
           setError(data.error)
         }

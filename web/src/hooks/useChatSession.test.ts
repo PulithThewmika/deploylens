@@ -99,6 +99,19 @@ describe('useChatSession', () => {
     ])
   })
 
+  it('does not drop the first message when sendMessage is called twice before the first one commits', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(sseResponse(['event: text\ndata: {"text":"ok"}\n\n'])))
+
+    const { result } = renderHook(() => useChatSession())
+
+    await act(async () => {
+      await Promise.all([result.current.sendMessage('first'), result.current.sendMessage('second')])
+    })
+
+    const userMessages = result.current.messages.filter((m) => m.role === 'user')
+    expect(userMessages.map((m) => m.content)).toEqual(['first', 'second'])
+  })
+
   it('sets an error and stops streaming when the initial fetch is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 503 })))
 
