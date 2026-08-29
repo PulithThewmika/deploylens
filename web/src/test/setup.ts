@@ -10,4 +10,9 @@ globalThis.ResizeObserver = class ResizeObserver {
   disconnect() {}
 }
 
+// jsdom doesn't implement scrollIntoView either (ChatWindow's auto-scroll).
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {}
+}
+
 afterEach(cleanup)

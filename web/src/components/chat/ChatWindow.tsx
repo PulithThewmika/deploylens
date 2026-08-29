@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { MessageBubble } from './MessageBubble'
 import type { ChatMessage, MessagePart } from '../../types/chat'
 
@@ -11,12 +12,18 @@ export function ChatWindow({ messages, isStreaming = false }: ChatWindowProps) {
   const awaitingFirstToken =
     isStreaming && lastMessage?.role === 'assistant' && !lastMessage.parts.some(hasVisibleContent)
 
+  const bottomRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages])
+
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
       {messages.map((message) => (
         <MessageBubble key={message.id} message={message} />
       ))}
       {awaitingFirstToken && <TypingIndicator />}
+      <div ref={bottomRef} />
     </div>
   )
 }
