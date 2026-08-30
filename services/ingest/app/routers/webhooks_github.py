@@ -16,6 +16,8 @@ from ..correlation.engine import (
 from ..db import get_session
 from ..models.deployment import Deployment
 from ..models.pipeline_event import PipelineEvent
+from ..models.safety_score import SafetyScore
+from ..safety_score import compute_safety_score
 
 logger = logging.getLogger("deploylens.webhooks.github")
 
@@ -92,13 +94,27 @@ async def github_webhook(
                 "image_tag": stmt.excluded.image_tag,
             },
         )
-        await session.execute(stmt)
+        stmt = stmt.returning(Deployment.id)
+        deployment_id = (await session.execute(stmt)).scalar_one()
+
+        score, factors = await compute_safety_score(session, service_id, commit_sha, payload)
+        safety_stmt = pg_insert(SafetyScore).values(
+            deployment_id=deployment_id,
+            score=score,
+            risk_factors=factors,
+        )
+        safety_stmt = safety_stmt.on_conflict_do_update(
+            index_elements=["deployment_id"],
+            set_={"score": safety_stmt.excluded.score, "risk_factors": safety_stmt.excluded.risk_factors},
+        )
+        await session.execute(safety_stmt)
+
         await session.commit()
         logger.info(
-            "Deployment building: service_id=%d workflow_run_id=%s commit=%s branch=%s",
-            service_id, workflow_run_id, commit_sha, branch,
+            "Deployment building: service_id=%d workflow_run_id=%s commit=%s branch=%s (safety_score=%d)",
+            service_id, workflow_run_id, commit_sha, branch, score,
         )
-        return {"status": "ok", "deployment_status": "building"}
+        return {"status": "ok", "deployment_status": "building", "safety_score": score}
 
     elif action == "completed":
         conclusion = workflow_run.get("conclusion")
