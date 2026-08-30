@@ -44,9 +44,13 @@ import {
   getSafetyScoreSchema,
   getSafetyScore,
 } from "./tools/get_safety_score.js";
+import {
+  generateIncidentReportSchema,
+  generateIncidentReport,
+} from "./tools/generate_incident_report.js";
 import { wrapTool } from "./tools/wrap-tool.js";
 
-const TOOL_COUNT = 9;
+const TOOL_COUNT = 10;
 
 // A fresh McpServer per connection — see createMcpServer() call sites below
 // for why this is a factory rather than a module-level singleton.
@@ -126,6 +130,14 @@ function createMcpServer(): McpServer {
     "Get the pre-deploy safety score (0-100, rule-based, not ML) for a deployment with its risk factor breakdown (change-failure-rate, files changed, day/time, cluster load, last deploy health).",
     getSafetyScoreSchema,
     wrapTool("get_safety_score", getSafetyScore),
+  );
+
+  // ── Tool: generate_incident_report ──────────────────────────────
+  server.tool(
+    "generate_incident_report",
+    "Generate a chronological markdown incident report for an alert — deployment details, metric timeline, error logs, and alert metadata, assembled directly from Postgres, Prometheus, and Loki. Useful as-is for pasting into an incident channel.",
+    generateIncidentReportSchema,
+    wrapTool("generate_incident_report", generateIncidentReport),
   );
 
   return server;
