@@ -61,6 +61,43 @@ async def test_completed_success_creates_built(client, sign_github_payload):
 
 
 @pytest.mark.asyncio
+async def test_completed_does_not_regress_status_past_built(client, mock_session, sign_github_payload):
+    """Regression test: live E2E testing showed ArgoCD can sync (and fire its
+    on-sync-succeeded webhook) before a slower-arriving 'completed' GitHub
+    event lands, if ArgoCD's poll happens to catch the manifest change while
+    the build is still running. A late 'completed' event must not regress
+    the deployment's status/finished_at back from 'deployed' to 'built' —
+    the UPDATE must guard status/finished_at with the same CASE the
+    'requested' branch already uses, only applying while still
+    pending/building."""
+    executed_statements = []
+    original_execute = mock_session.execute
+
+    async def capture_execute(stmt):
+        executed_statements.append(stmt)
+        return await original_execute(stmt)
+
+    mock_session.execute = capture_execute
+
+    resp = await _post_github(
+        client, _workflow_run_payload("completed", conclusion="success"), sign_github_payload,
+    )
+    assert resp.status_code == 200
+
+    deployment_stmts = [
+        s for s in executed_statements if getattr(getattr(s, "table", None), "name", None) == "deployments"
+    ]
+    assert len(deployment_stmts) == 1
+    compiled = str(deployment_stmts[0].compile(dialect=postgresql.dialect()))
+    # Both status and finished_at must be guarded by the same "only while
+    # still pending/building" CASE the "requested" branch uses — a bare
+    # unconditional assignment here is exactly what let ArgoCD's
+    # already-"deployed" status get regressed back to "built".
+    assert "status = CASE WHEN (deployments.status IN" in compiled
+    assert "finished_at = CASE WHEN (deployments.status IN" in compiled
+
+
+@pytest.mark.asyncio
 async def test_completed_failure_creates_build_failed(client, sign_github_payload):
     resp = await _post_github(
         client,

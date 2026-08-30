@@ -134,10 +134,24 @@ async def github_webhook(
             index_elements=["workflow_run_id"],
             index_where=Deployment.workflow_run_id.is_not(None),
             set_={
-                "status": new_status,
+                # ArgoCD can sync (and fire its own webhook) before this
+                # "completed" event arrives, if its poll happens to land
+                # while the build is still running. Don't let a late build
+                # completion regress a deployment ArgoCD has already
+                # advanced past "built" (e.g. back from "deployed" to
+                # "built") — only apply status/finished_at while the
+                # deployment is still in the pre-sync (pending/building)
+                # phase, same guard as the "requested" branch above.
+                "status": case(
+                    (Deployment.status.in_(["pending", "building"]), new_status),
+                    else_=Deployment.status,
+                ),
                 "build_status": new_build_status,
                 "build_duration_s": build_duration_s,
-                "finished_at": utcnow(),
+                "finished_at": case(
+                    (Deployment.status.in_(["pending", "building"]), utcnow()),
+                    else_=Deployment.finished_at,
+                ),
                 "image_tag": stmt.excluded.image_tag,
             },
         )
