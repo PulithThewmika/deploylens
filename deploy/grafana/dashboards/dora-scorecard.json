@@ -37,7 +37,14 @@
               { "color": "blue", "value": 0.142 },
               { "color": "green", "value": 1 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -77,7 +84,14 @@
               { "color": "yellow", "value": 604800 },
               { "color": "red", "value": 2592000 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -119,7 +133,14 @@
               { "color": "yellow", "value": 30 },
               { "color": "red", "value": 45 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -157,7 +178,14 @@
               { "color": "yellow", "value": 86400 },
               { "color": "red", "value": 604800 }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
