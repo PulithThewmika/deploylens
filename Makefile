@@ -1,5 +1,5 @@
 .PHONY: help cluster-up cluster-down cluster-status up down logs db-shell migrate \
-        forwards forwards-stop argocd-forward tunnel webhook-update
+        forwards forwards-stop argocd-forward tunnel webhook-update e2e
 
 help:
 	@echo "DeployLens dev workflow targets:"
@@ -16,6 +16,7 @@ help:
 	@echo "  argocd-forward   Port-forward the ArgoCD UI to localhost:8443"
 	@echo "  tunnel           Start ngrok tunnel on port 8000 for GitHub webhooks"
 	@echo "  webhook-update   Patch the GitHub webhook with the current ngrok URL"
+	@echo "  e2e              Run the full push-to-alert end-to-end smoke test (see scripts/e2e_smoke_test.py)"
 
 # --- Kind Cluster ---
 cluster-up:
@@ -86,3 +87,9 @@ webhook-update:
 		-f "config[secret]=$$(grep GITHUB_WEBHOOK_SECRET .env | cut -d= -f2-)" \
 		-f "config[insecure_ssl]=0" && \
 	echo "Webhook updated to $$NGROK_URL/webhooks/github"
+
+# --- End-to-End Smoke Test ---
+# Requires: cluster-up, up, forwards, and a live tunnel (tunnel + webhook-update)
+# already running. Takes ~2-25 minutes — see scripts/e2e_smoke_test.py for why.
+e2e:
+	python scripts/e2e_smoke_test.py

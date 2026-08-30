@@ -170,6 +170,49 @@ async def test_sync_succeeded_correlates_by_image_tag_fallback_merges_single_row
 
 
 @pytest.mark.asyncio
+async def test_stale_orphan_with_same_revision_is_reconciled_not_crashed(client, mock_session, argocd_token):
+    """Regression test: an earlier ArgoCD event (e.g. on-sync-running arriving
+    before the GitHub workflow_run completes) can create an orphan row that
+    claims (argocd_revision, service_id) before the real deployment is known.
+    When a later event correlates that same revision to the real deployment
+    via commit_sha, merging into it must not crash on the unique index —
+    the stale orphan should be deleted instead."""
+    existing_deployment = MagicMock(id=67, status="built")
+    orphan_deployment = MagicMock(id=66, status="syncing")
+    deleted = []
+
+    async def mock_execute(stmt):
+        result = MagicMock()
+        table = _table_of(stmt)
+        where = str(getattr(stmt, "whereclause", ""))
+        if table == "services":
+            result.scalar_one_or_none.return_value = MagicMock(id=1)
+        elif table == "deployments" and "commit_sha" in where:
+            result.scalar_one_or_none.return_value = existing_deployment
+        elif table == "deployments" and "argocd_revision" in where:
+            result.scalar_one_or_none.return_value = orphan_deployment
+        else:
+            result.scalar_one_or_none.return_value = None
+        return result
+
+    async def mock_delete(obj):
+        deleted.append(obj)
+
+    mock_session.execute = mock_execute
+    mock_session.delete = mock_delete
+
+    resp = await _post_argocd(
+        client, _argocd_payload("on-sync-succeeded", revision="d29dbb2694412eed6d86685ee46e5fed9a89ad8a"), argocd_token,
+    )
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["deployment_status"] == "deployed"
+    assert existing_deployment.status == "deployed"
+    assert deleted == [orphan_deployment]
+
+
+@pytest.mark.asyncio
 async def test_duplicate_argocd_event_delivery_is_idempotent(client, mock_session, argocd_token):
     """Redelivered ArgoCD notifications must upsert via ON CONFLICT, never a bare
     insert (see partial unique index on deployments(argocd_revision, service_id))."""
