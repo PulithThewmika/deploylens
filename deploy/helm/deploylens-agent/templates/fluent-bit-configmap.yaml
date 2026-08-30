@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "fluent-bit") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+    {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "fluent-bit") | nindent 4 }}
+data:
+  fluent-bit.conf: |
+    [SERVICE]
+        Daemon        Off
+        Flush         5
+        Log_Level     info
+        Parsers_File  parsers.conf
+        HTTP_Server   On
+        HTTP_Listen   0.0.0.0
+        HTTP_Port     2020
+
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        multiline.parser  docker, cri
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
+    [FILTER]
+        Name                kubernetes
+        Match               kube.*
+        Kube_URL            https://kubernetes.default.svc:443
+        Kube_CA_File        /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        Kube_Token_File     /var/run/secrets/kubernetes.io/serviceaccount/token
+        Kube_Tag_Prefix     kube.var.log.containers.
+        Merge_Log           On
+        Keep_Log            Off
+        K8S-Logging.Parser  On
+        K8S-Logging.Exclude On
+        Labels              On
+        Annotations         Off
+
+    [OUTPUT]
+        Name                 loki
+        Match                kube.*
+        Host                 {{ .Values.loki.host }}
+        Port                 {{ .Values.loki.port }}
+        Labels               job=fluent-bit,cluster={{ .Release.Namespace }}
+        Label_Map_Path       /fluent-bit/etc/conf/labelmap.json
+
+  parsers.conf: |
+    [PARSER]
+        Name        docker
+        Format      json
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L
+        Time_Keep   On
+
+  labelmap.json: |
+    {
+      "kubernetes": {
+        "namespace_name": "namespace",
+        "pod_name": "pod",
+        "container_name": "container",
+        "labels": {
+          "app": "app",
+          "app.kubernetes.io/name": "app"
+        }
+      }
+    }

@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+    {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+      containers:
+        - name: prometheus
+          image: "{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}"
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            # Short local retention — this instance only buffers scrapes
+            # briefly before remote_write ships them centrally, it isn't
+            # meant to be queried locally.
+            - --storage.tsdb.retention.time=2h
+          ports:
+            - name: http
+              containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            initialDelaySeconds: 5
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: storage
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+        - name: storage
+          emptyDir: {}
