@@ -29,6 +29,27 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
 
+  test-mcp-server:
+    name: MCP Server Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/mcp-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/mcp-server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
   test-agent:
     name: Agent Tests
     runs-on: ubuntu-latest
