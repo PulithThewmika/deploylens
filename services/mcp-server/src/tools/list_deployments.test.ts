@@ -76,6 +76,18 @@ describe("listDeployments", () => {
     expect(params).toContain("orders");
   });
 
+  it("returns an empty array when the service filter matches no service", async () => {
+    mockedQuery.mockResolvedValue([]);
+
+    const result = await listDeployments({ service: "nonexistent", limit: 10 });
+    const parsed = parseResult(result);
+
+    expect(parsed).toEqual({ summary: "No deployments found", deployments: [] });
+    const [sql, params] = mockedQuery.mock.calls[0];
+    expect(sql).toContain("s.name =");
+    expect(params).toContain("nonexistent");
+  });
+
   it("filters by status", async () => {
     mockedQuery.mockResolvedValue([makeRow({ status: "sync_failed" })]);
 
