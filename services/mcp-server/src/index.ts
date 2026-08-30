@@ -40,9 +40,13 @@ import {
   getActiveAlertsSchema,
   getActiveAlerts,
 } from "./tools/get_active_alerts.js";
+import {
+  getSafetyScoreSchema,
+  getSafetyScore,
+} from "./tools/get_safety_score.js";
 import { wrapTool } from "./tools/wrap-tool.js";
 
-const TOOL_COUNT = 8;
+const TOOL_COUNT = 9;
 
 // A fresh McpServer per connection — see createMcpServer() call sites below
 // for why this is a factory rather than a module-level singleton.
@@ -114,6 +118,14 @@ function createMcpServer(): McpServer {
     "Get currently active (unresolved) alerts with deployment linkage, optionally filtered by service or severity.",
     getActiveAlertsSchema,
     wrapTool("get_active_alerts", getActiveAlerts),
+  );
+
+  // ── Tool: get_safety_score ──────────────────────────────────────
+  server.tool(
+    "get_safety_score",
+    "Get the pre-deploy safety score (0-100, rule-based, not ML) for a deployment with its risk factor breakdown (change-failure-rate, files changed, day/time, cluster load, last deploy health).",
+    getSafetyScoreSchema,
+    wrapTool("get_safety_score", getSafetyScore),
   );
 
   return server;
