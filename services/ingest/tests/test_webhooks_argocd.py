@@ -5,7 +5,20 @@ from unittest.mock import MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Insert
 from sqlalchemy.dialects import postgresql
+
+
+def _table_of(stmt):
+    """Resolve the target table name of a select/insert statement, for routing
+    mock query results by what's actually being queried instead of call order."""
+    table = getattr(stmt, "table", None)
+    if table is not None:
+        return table.name
+    descriptions = getattr(stmt, "column_descriptions", None)
+    if descriptions:
+        return descriptions[0]["entity"].__tablename__
+    return None
 
 
 def _argocd_payload(event_type="on-sync-succeeded", app_name="sample-app", revision="abc1234567890"):
@@ -98,18 +111,18 @@ async def test_sync_succeeded_correlates_by_commit_sha_merges_single_row(client,
     """A revision that matches an existing deployment's commit_sha must merge into
     that row instead of creating a second (orphan) one."""
     existing_deployment = MagicMock(id=100, status="building")
-    call_count = 0
+    executed = []
 
     async def mock_execute(stmt):
-        nonlocal call_count
-        call_count += 1
+        executed.append(stmt)
         result = MagicMock()
-        if call_count == 1:
-            result.scalar_one_or_none.return_value = None  # pipeline_events insert
-        elif call_count == 2:
-            result.scalar_one_or_none.return_value = MagicMock(id=1)  # resolve_service
+        table = _table_of(stmt)
+        if table == "services":
+            result.scalar_one_or_none.return_value = MagicMock(id=1)
+        elif table == "deployments" and "commit_sha" in str(getattr(stmt, "whereclause", "")):
+            result.scalar_one_or_none.return_value = existing_deployment
         else:
-            result.scalar_one_or_none.return_value = existing_deployment  # commit_sha match
+            result.scalar_one_or_none.return_value = None
         return result
 
     mock_session.execute = mock_execute
@@ -120,7 +133,7 @@ async def test_sync_succeeded_correlates_by_commit_sha_merges_single_row(client,
     assert data["correlation"] == "commit_sha"
     assert data["deployment_status"] == "deployed"
     assert existing_deployment.status == "deployed"
-    assert call_count == 3  # no pg_insert executed — merged into the existing row
+    assert not any(isinstance(s, Insert) and _table_of(s) == "deployments" for s in executed)  # merged, no new row inserted
 
 
 @pytest.mark.asyncio
@@ -128,20 +141,21 @@ async def test_sync_succeeded_correlates_by_image_tag_fallback_merges_single_row
     """When the ArgoCD sync revision (post image-tag-bump commit) doesn't match the
     original commit_sha, the image_tag fallback must still merge into the same row."""
     existing_deployment = MagicMock(id=200, status="building")
-    call_count = 0
+    executed = []
 
     async def mock_execute(stmt):
-        nonlocal call_count
-        call_count += 1
+        executed.append(stmt)
         result = MagicMock()
-        if call_count == 1:
-            result.scalar_one_or_none.return_value = None  # pipeline_events insert
-        elif call_count == 2:
-            result.scalar_one_or_none.return_value = MagicMock(id=1)  # resolve_service
-        elif call_count == 3:
+        table = _table_of(stmt)
+        where = str(getattr(stmt, "whereclause", ""))
+        if table == "services":
+            result.scalar_one_or_none.return_value = MagicMock(id=1)
+        elif table == "deployments" and "commit_sha" in where:
             result.scalar_one_or_none.return_value = None  # commit_sha miss
-        else:
+        elif table == "deployments" and "image_tag" in where:
             result.scalar_one_or_none.return_value = existing_deployment  # image_tag match
+        else:
+            result.scalar_one_or_none.return_value = None
         return result
 
     mock_session.execute = mock_execute
@@ -152,7 +166,7 @@ async def test_sync_succeeded_correlates_by_image_tag_fallback_merges_single_row
     assert data["correlation"] == "image_tag"
     assert data["deployment_status"] == "deployed"
     assert existing_deployment.status == "deployed"
-    assert call_count == 4  # no pg_insert executed — merged into the existing row
+    assert not any(isinstance(s, Insert) and _table_of(s) == "deployments" for s in executed)  # merged, no new row inserted
 
 
 @pytest.mark.asyncio
