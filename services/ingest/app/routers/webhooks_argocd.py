@@ -88,6 +88,27 @@ async def argocd_webhook(
             )
         ).scalar_one_or_none()
         if stale_orphan is not None:
+            if stale_orphan.status == "assessed":
+                # The orphan already has a health assessment (and possibly
+                # an alert) attached — deleting it would cascade-delete that
+                # real data. This means it sat unmerged long enough for the
+                # agent to score it (ArgoCD stuck between on-sync-running
+                # and on-sync-succeeded for a full OBSERVATION_WINDOW),
+                # unusual enough that we bail out here rather than either
+                # losing that history or crashing on the unique-index
+                # collision the merge below would otherwise hit.
+                await session.commit()
+                logger.warning(
+                    "Stale orphan deployment_id=%d (revision=%s) already assessed — "
+                    "skipping merge into deployment_id=%d to avoid losing its health "
+                    "assessment; needs manual reconciliation",
+                    stale_orphan.id, revision, existing.id,
+                )
+                return {
+                    "status": "ignored",
+                    "reason": f"revision {revision} already assessed on a different deployment "
+                              f"(id={stale_orphan.id}); manual reconciliation required",
+                }
             logger.info(
                 "Reconciling stale orphan deployment_id=%d (revision=%s) into deployment_id=%d",
                 stale_orphan.id, revision, existing.id,
