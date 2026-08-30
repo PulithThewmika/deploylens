@@ -1,0 +1,43 @@
+{{- if .Values.blastRadius.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+    {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "blast-radius") | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+rules:
+  # Read-only — discovers service-to-service dependencies for the blast
+  # radius feature (E14-T3). No write/delete verbs on anything.
+  - apiGroups: [""]
+    resources: ["pods", "services", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

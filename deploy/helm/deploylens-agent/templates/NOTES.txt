@@ -1,0 +1,51 @@
+DeployLens agent set installed into namespace "{{ .Release.Namespace }}".
+
+This cluster is now shipping:
+  - Logs      -> {{ .Values.loki.host }}:{{ .Values.loki.port }} (via Fluent-Bit)
+  - Metrics   -> {{ .Values.prometheus.remoteWrite.url }} (via the bundled agent-mode Prometheus)
+
+Any pod with these annotations will be scraped automatically — no
+ServiceMonitor or Prometheus Operator required:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"    # optional, defaults to /metrics
+
+── Verify it's working ──────────────────────────────────────────────
+
+1. Check every pod reached Running:
+     kubectl get pods -n {{ .Release.Namespace }}
+
+2. Confirm the bundled Prometheus is scraping and remote-writing:
+     kubectl logs -n {{ .Release.Namespace }} deploy/{{ .Release.Name }}-prometheus | grep -i "remote_write\|error"
+     kubectl port-forward -n {{ .Release.Namespace }} deploy/{{ .Release.Name }}-prometheus 9090:9090
+     # then open http://localhost:9090/targets — targets should show "UP"
+
+3. Confirm logs are reaching central Loki (run from wherever you can reach
+   the central platform):
+     curl -G "{{ .Values.loki.host }}:{{ .Values.loki.port }}/loki/api/v1/query" \
+       --data-urlencode 'query={cluster="{{ .Release.Namespace }}"}'
+
+4. Confirm metrics are reaching the central Prometheus: check its
+   /api/v1/status/tsdb or query for a metric with cluster="{{ .Release.Namespace }}".
+
+── Webhook tokens ───────────────────────────────────────────────────
+
+GitHub/ArgoCD/Alertmanager webhook tokens are stored in the
+"{{ include "deploylens-agent.fullname" (dict "root" . "component" "webhook-tokens") }}"
+Secret. Reference them from your ArgoCD Notifications config or CI
+pipeline with a secretKeyRef instead of hardcoding them:
+     secretKeyRef:
+       name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "webhook-tokens") }}
+       key: argocd-webhook-token   # or github-webhook-token / alertmanager-webhook-token
+
+── Blast radius (optional) ──────────────────────────────────────────
+
+{{- if .Values.blastRadius.enabled }}
+Blast-radius RBAC is enabled — a read-only ServiceAccount/ClusterRole for
+service-dependency discovery is installed
+({{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}).
+{{- else }}
+Blast-radius RBAC is currently disabled (blastRadius.enabled=false). Set
+it to true once you're ready to use the blast-radius discovery feature.
+{{- end }}

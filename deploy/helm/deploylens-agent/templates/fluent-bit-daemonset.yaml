@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "fluent-bit") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+    {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "fluent-bit") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "fluent-bit") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "fluent-bit") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "deploylens-agent.fullname" (dict "root" . "component" "fluent-bit") }}
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: fluent-bit
+          image: "{{ .Values.fluentBit.image.repository }}:{{ .Values.fluentBit.image.tag }}"
+          resources:
+            {{- toYaml .Values.fluentBit.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /fluent-bit/etc/fluent-bit.conf
+              subPath: fluent-bit.conf
+            - name: config
+              mountPath: /fluent-bit/etc/parsers.conf
+              subPath: parsers.conf
+            - name: config
+              mountPath: /fluent-bit/etc/conf/labelmap.json
+              subPath: labelmap.json
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "fluent-bit") }}
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
