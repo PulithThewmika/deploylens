@@ -2,15 +2,76 @@
   "annotations": {
     "list": [
       {
-        "name": "Deployments",
+        "name": "Healthy deploys",
         "datasource": {
           "type": "grafana-postgresql-datasource",
           "uid": "deploylens-postgres"
         },
         "enable": true,
+        "hide": false,
+        "iconColor": "#73BF69",
+        "target": {
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nJOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status IN ('deployed', 'assessed')\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\n  AND ha.verdict = 'healthy'\nORDER BY d.finished_at DESC\nLIMIT 200",
+          "format": "table"
+        },
+        "mappings": {
+          "text": { "source": "field", "value": "text" },
+          "title": { "source": "field", "value": "title" },
+          "tags": { "source": "field", "value": "tags" },
+          "time": { "source": "field", "value": "time" }
+        }
+      },
+      {
+        "name": "Degraded deploys",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#FF9830",
+        "target": {
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nJOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status IN ('deployed', 'assessed')\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\n  AND ha.verdict = 'degraded'\nORDER BY d.finished_at DESC\nLIMIT 200",
+          "format": "table"
+        },
+        "mappings": {
+          "text": { "source": "field", "value": "text" },
+          "title": { "source": "field", "value": "title" },
+          "tags": { "source": "field", "value": "tags" },
+          "time": { "source": "field", "value": "time" }
+        }
+      },
+      {
+        "name": "Failed deploys",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "#F2495C",
+        "target": {
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nJOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status IN ('deployed', 'assessed')\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\n  AND ha.verdict = 'failed'\nORDER BY d.finished_at DESC\nLIMIT 200",
+          "format": "table"
+        },
+        "mappings": {
+          "text": { "source": "field", "value": "text" },
+          "title": { "source": "field", "value": "title" },
+          "tags": { "source": "field", "value": "tags" },
+          "time": { "source": "field", "value": "time" }
+        }
+      },
+      {
+        "name": "Pending assessment",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "enable": true,
+        "hide": false,
         "iconColor": "grey",
         "target": {
-          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status = 'deployed'\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\nORDER BY d.finished_at DESC\nLIMIT 200",
+          "rawSql": "SELECT\n    d.finished_at AS time,\n    'Deploy #' || d.id || ' (' || substring(d.commit_sha, 1, 7) || ')' AS title,\n    s.name || ' | verdict=' || COALESCE(ha.verdict, 'pending')\n           || COALESCE(' score=' || ha.score::text, '') AS text,\n    COALESCE(ha.verdict, 'pending') || ',' || s.name AS tags\nFROM deployments d\nJOIN services s ON s.id = d.service_id\nLEFT JOIN health_assessments ha ON ha.deployment_id = d.id\nWHERE d.finished_at IS NOT NULL\n  AND d.status = 'deployed'\n  AND ('$service' = '.*' OR s.name = '$service')\n  AND $__timeFilter(d.finished_at)\n  AND ha.verdict IS NULL\nORDER BY d.finished_at DESC\nLIMIT 200",
           "format": "table"
         },
         "mappings": {

@@ -188,7 +188,7 @@
           "links": [
             {
               "title": "Open Service Deep Dive",
-              "url": "/d/service-deep-dive/service-deep-dive?var-service=${__data.fields.service}",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${__data.fields.service}&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ]
