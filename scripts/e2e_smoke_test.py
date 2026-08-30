@@ -23,6 +23,12 @@ Prerequisites (not managed by this script):
     `make up`) with the sample app, ArgoCD, Prometheus and Alertmanager
     running, and the load generator producing steady traffic to payments
     (health scoring needs traffic to compute a meaningful error rate).
+  - `make forwards` is running (specifically the Prometheus port-forward)
+    — the agent's PROM_URL (host.docker.internal:9090) resolves fine even
+    without it, but every query silently fails ("Prometheus unreachable"),
+    which trips the low-traffic guard rail and always scores 100/healthy
+    regardless of the actual error rate. Confirmed live: this is exactly
+    what happened on the first attempt at getting this script to pass.
   - A tunnel is forwarding GitHub webhooks to the local ingest service
     (`make tunnel`, then `make webhook-update` if the URL changed) — without
     this, the ArgoCD-side webhook still reaches ingest directly (ArgoCD runs
