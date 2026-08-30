@@ -98,12 +98,15 @@ async def test_query_prometheus_unreachable(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_query_prometheus_timeout(mock_client):
-    """Prometheus timeout returns None."""
+async def test_query_prometheus_timeout(mock_client, caplog):
+    """Prometheus timeout returns None and logs a warning."""
     mock_client.get.side_effect = httpx.TimeoutException("Timed out")
 
-    result = await query_prometheus("up", TS)
+    with caplog.at_level("WARNING", logger="deploylens.agent.promql"):
+        result = await query_prometheus("up", TS)
+
     assert result is None
+    assert any("Prometheus unreachable" in record.message for record in caplog.records)
 
 
 @pytest.mark.asyncio
