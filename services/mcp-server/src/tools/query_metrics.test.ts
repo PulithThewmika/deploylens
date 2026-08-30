@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { queryOne } from "../clients/postgres.js";
+import { rangeQuery } from "../clients/prometheus.js";
 import {
   buildPromQL,
   parseRelativeSeconds,
@@ -6,7 +8,25 @@ import {
   autoStep,
   formatResults,
   sanitizeLabel,
+  queryMetrics,
 } from "./query_metrics.js";
+import { parseResult } from "./test-utils.js";
+
+vi.mock("../clients/postgres.js", () => ({
+  queryOne: vi.fn(),
+}));
+
+vi.mock("../clients/prometheus.js", () => ({
+  rangeQuery: vi.fn(),
+}));
+
+const mockedQueryOne = vi.mocked(queryOne);
+const mockedRangeQuery = vi.mocked(rangeQuery);
+
+beforeEach(() => {
+  mockedQueryOne.mockReset();
+  mockedRangeQuery.mockReset();
+});
 
 describe("sanitizeLabel", () => {
   it("escapes backslash and double quotes", () => {
@@ -167,5 +187,53 @@ describe("formatResults", () => {
     }];
     const points = formatResults(results, "restarts");
     expect(points[0].v).toBe(0);
+  });
+});
+
+describe("queryMetrics", () => {
+  it("returns a data series with unit and summary on the happy path", async () => {
+    mockedQueryOne.mockResolvedValue({ name: "orders", namespace: "deploylens" });
+    mockedRangeQuery.mockResolvedValue([
+      { metric: {}, values: [[1700000000, "0.02"], [1700000060, "0.04"]] },
+    ]);
+
+    const result = await queryMetrics({ service: "orders", metric: "error_rate", from: "-1h" });
+    const parsed = parseResult(result);
+
+    expect(parsed).toMatchObject({
+      service: "orders",
+      metric: "error_rate",
+      unit: "fraction",
+      from: "-1h",
+      to: "now",
+    });
+    expect(parsed.data).toHaveLength(2);
+    expect(typeof parsed.summary).toBe("string");
+    expect(typeof parsed.promql).toBe("string");
+  });
+
+  it("returns an error object (not a thrown exception) when Prometheus is unreachable", async () => {
+    mockedQueryOne.mockResolvedValue({ name: "orders", namespace: "deploylens" });
+    mockedRangeQuery.mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+    const result = await queryMetrics({ service: "orders", metric: "error_rate", from: "-1h" });
+    const parsed = parseResult(result);
+
+    expect(parsed.error).toContain("Prometheus query failed");
+    expect(parsed.summary).toBe("query_metrics failed: Prometheus unreachable or query error");
+    expect(parsed.data).toBeUndefined();
+  });
+
+  it("returns an error object when the service does not exist", async () => {
+    mockedQueryOne.mockResolvedValue(null);
+
+    const result = await queryMetrics({ service: "nonexistent", metric: "error_rate", from: "-1h" });
+    const parsed = parseResult(result);
+
+    expect(parsed).toEqual({
+      error: 'Service "nonexistent" not found',
+      summary: 'query_metrics failed: service "nonexistent" not found',
+    });
+    expect(mockedRangeQuery).not.toHaveBeenCalled();
   });
 });
