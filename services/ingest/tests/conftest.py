@@ -32,12 +32,26 @@ def _sign_payload(payload: bytes, secret: str) -> str:
     return "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
 
 
+class _FakeNestedTransaction:
+    """Minimal stand-in for SQLAlchemy's AsyncSessionTransaction: an async
+    context manager, never suppresses exceptions (matching real savepoint
+    semantics — session.begin_nested() itself is a plain sync call that
+    returns this, not a coroutine)."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
 @pytest.fixture
 def mock_session():
     session = AsyncMock()
     session.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None)))
     session.commit = AsyncMock()
     session.flush = AsyncMock()
+    session.begin_nested = MagicMock(return_value=_FakeNestedTransaction())
     return session
 
 

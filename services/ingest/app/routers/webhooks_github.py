@@ -97,21 +97,36 @@ async def github_webhook(
         stmt = stmt.returning(Deployment.id)
         deployment_id = (await session.execute(stmt)).scalar_one()
 
-        score, factors = await compute_safety_score(session, service_id, commit_sha, payload)
-        safety_stmt = pg_insert(SafetyScore).values(
-            deployment_id=deployment_id,
-            score=score,
-            risk_factors=factors,
-        )
-        safety_stmt = safety_stmt.on_conflict_do_update(
-            index_elements=["deployment_id"],
-            set_={"score": safety_stmt.excluded.score, "risk_factors": safety_stmt.excluded.risk_factors},
-        )
-        await session.execute(safety_stmt)
+        # Safety scoring is a stretch feature (E14) layered on top of core
+        # deployment tracking (M1/M2) — a bug or transient failure in it
+        # (a bad CFR query, GitHub/Prometheus being unreachable) must never
+        # prevent the deployment itself from being recorded. Isolate it in
+        # a savepoint so a failure here rolls back only the safety-score
+        # work, not the deployment insert above.
+        score = None
+        try:
+            async with session.begin_nested():
+                score, factors = await compute_safety_score(session, service_id, commit_sha, payload)
+                safety_stmt = pg_insert(SafetyScore).values(
+                    deployment_id=deployment_id,
+                    score=score,
+                    risk_factors=factors,
+                )
+                safety_stmt = safety_stmt.on_conflict_do_update(
+                    index_elements=["deployment_id"],
+                    set_={"score": safety_stmt.excluded.score, "risk_factors": safety_stmt.excluded.risk_factors},
+                )
+                await session.execute(safety_stmt)
+        except Exception as e:
+            logger.warning(
+                "Safety score computation failed for deployment_id=%d, continuing without it: %s",
+                deployment_id, e,
+            )
+            score = None
 
         await session.commit()
         logger.info(
-            "Deployment building: service_id=%d workflow_run_id=%s commit=%s branch=%s (safety_score=%d)",
+            "Deployment building: service_id=%d workflow_run_id=%s commit=%s branch=%s (safety_score=%s)",
             service_id, workflow_run_id, commit_sha, branch, score,
         )
         return {"status": "ok", "deployment_status": "building", "safety_score": score}

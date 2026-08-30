@@ -11,6 +11,7 @@ Weighted factors (max 100, per doc 05):
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from datetime import datetime
@@ -76,7 +77,7 @@ async def _fetch_files_changed(repo_full_name: str, commit_sha: str) -> int | No
     if not GITHUB_API_TOKEN or not repo_full_name or not commit_sha:
         return None
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             resp = await client.get(
                 f"{GITHUB_API_URL}/repos/{repo_full_name}/commits/{commit_sha}",
                 headers={
@@ -125,7 +126,15 @@ async def compute_safety_score(
     score += cfr_points
     factors["cfr_30d"] = {"value": cfr, "threshold": CFR_THRESHOLD, "points": cfr_points}
 
-    files_changed = await _fetch_files_changed(repo_full_name, commit_sha)
+    # This is computed synchronously in the webhook request path (per spec:
+    # "on workflow_run.requested"), not in the agent's async loop like health
+    # scoring — so the two independent external calls (GitHub API, Prometheus)
+    # run concurrently rather than serially, to stay well under GitHub's
+    # webhook delivery timeout even if one of them is slow or unreachable.
+    files_changed, cluster = await asyncio.gather(
+        _fetch_files_changed(repo_full_name, commit_sha),
+        fetch_cluster_utilization(datetime.now()),
+    )
     files_points = 20 if (files_changed is not None and files_changed > FILES_CHANGED_THRESHOLD) else 0
     score += files_points
     factors["files_changed"] = {"value": files_changed, "threshold": FILES_CHANGED_THRESHOLD, "points": files_points}
@@ -135,7 +144,6 @@ async def compute_safety_score(
     factors["day_of_week"] = day_factor
     factors["time_of_day"] = time_factor
 
-    cluster = await fetch_cluster_utilization(datetime.now())
     cpu_pct, mem_pct = cluster.get("cpu_pct"), cluster.get("mem_pct")
     cluster_overloaded = (
         (cpu_pct is not None and cpu_pct > CLUSTER_CPU_THRESHOLD_PCT)

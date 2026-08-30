@@ -6,6 +6,7 @@ given window at a given timestamp. Mirrors the agent's query patterns.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
@@ -97,13 +98,21 @@ async def fetch_cluster_utilization(timestamp: datetime) -> dict[str, float | No
 
     Used by the safety score's "cluster is under load" risk factor — this
     is intentionally cluster-wide (not per-service), unlike fetch_metrics_at.
+
+    Run concurrently, not sequentially: this is called synchronously from
+    the GitHub webhook handler (safety score is computed on
+    workflow_run.requested, not in the agent's async loop), so a slow or
+    unreachable Prometheus must not cost two serial timeouts on top of
+    each other and risk exceeding GitHub's webhook delivery timeout.
     """
-    cpu_pct = await _query(
-        "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
-        timestamp,
-    )
-    mem_pct = await _query(
-        "100 * (1 - avg(node_memory_MemAvailable_bytes) / avg(node_memory_MemTotal_bytes))",
-        timestamp,
+    cpu_pct, mem_pct = await asyncio.gather(
+        _query(
+            "100 * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
+            timestamp,
+        ),
+        _query(
+            "100 * (1 - avg(node_memory_MemAvailable_bytes) / avg(node_memory_MemTotal_bytes))",
+            timestamp,
+        ),
     )
     return {"cpu_pct": cpu_pct, "mem_pct": mem_pct}
