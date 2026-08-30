@@ -3,28 +3,9 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ServiceDeepDive } from './ServiceDeepDive'
-import type { Service } from '../types/service'
+import { jsonResponse, makeService, stubRoutedFetch } from '../test/fixtures'
 import type { Deployment } from '../types/deployment'
 import type { DORAMetrics } from '../types/dora'
-
-function makeService(overrides: Partial<Service> = {}): Service {
-  return {
-    id: 1,
-    name: 'orders',
-    namespace: 'deploylens',
-    repo: 'org/orders',
-    argocd_app: 'orders',
-    latest_deploy: {
-      commit_sha: 'abc123def',
-      author: 'alice',
-      status: 'deployed',
-      finished_at: '2026-08-29T10:00:00Z',
-    },
-    health: { score: 92, verdict: 'healthy' },
-    active_alert_count: 0,
-    ...overrides,
-  }
-}
 
 function makeDeployment(overrides: Partial<Deployment> = {}): Deployment {
   return {
@@ -59,21 +40,11 @@ function makeDora(overrides: Partial<DORAMetrics> = {}): DORAMetrics {
   }
 }
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
-
-function stubRoutedFetch(routes: Record<string, () => Response>) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input.toString()
-      for (const [prefix, respond] of Object.entries(routes)) {
-        if (url.startsWith(prefix)) return Promise.resolve(respond())
-      }
-      return Promise.resolve(new Response(null, { status: 404 }))
-    }),
-  )
+const DEFAULT_ROUTES = {
+  '/api/services': () => jsonResponse([makeService()]),
+  '/api/deployments': () => jsonResponse([makeDeployment()]),
+  '/api/dora': () => jsonResponse(makeDora()),
+  '/api/grafana/proxy': () => new Response(null, { status: 200 }),
 }
 
 function renderServiceDeepDive(name = 'orders') {
@@ -96,12 +67,7 @@ afterEach(() => {
 
 describe('ServiceDeepDive page', () => {
   it('renders the service name, status, and environment from API data', async () => {
-    stubRoutedFetch({
-      '/api/services': () => jsonResponse([makeService()]),
-      '/api/deployments': () => jsonResponse([makeDeployment()]),
-      '/api/dora': () => jsonResponse(makeDora()),
-      '/api/grafana/proxy': () => new Response(null, { status: 200 }),
-    })
+    stubRoutedFetch(DEFAULT_ROUTES)
 
     renderServiceDeepDive()
 
@@ -111,12 +77,7 @@ describe('ServiceDeepDive page', () => {
   })
 
   it('renders DORA mini-stats: deploy frequency, lead time, change failure rate, and MTTR', async () => {
-    stubRoutedFetch({
-      '/api/services': () => jsonResponse([makeService()]),
-      '/api/deployments': () => jsonResponse([makeDeployment()]),
-      '/api/dora': () => jsonResponse(makeDora()),
-      '/api/grafana/proxy': () => new Response(null, { status: 200 }),
-    })
+    stubRoutedFetch(DEFAULT_ROUTES)
 
     renderServiceDeepDive()
 
@@ -129,12 +90,7 @@ describe('ServiceDeepDive page', () => {
   })
 
   it('renders the pipeline timeline with deployments', async () => {
-    stubRoutedFetch({
-      '/api/services': () => jsonResponse([makeService()]),
-      '/api/deployments': () => jsonResponse([makeDeployment()]),
-      '/api/dora': () => jsonResponse(makeDora()),
-      '/api/grafana/proxy': () => new Response(null, { status: 200 }),
-    })
+    stubRoutedFetch(DEFAULT_ROUTES)
 
     renderServiceDeepDive()
 
@@ -143,10 +99,8 @@ describe('ServiceDeepDive page', () => {
 
   it('shows the "Compare deployments" button once deployments have loaded', async () => {
     stubRoutedFetch({
-      '/api/services': () => jsonResponse([makeService()]),
+      ...DEFAULT_ROUTES,
       '/api/deployments': () => jsonResponse([makeDeployment(), makeDeployment({ id: 11 })]),
-      '/api/dora': () => jsonResponse(makeDora()),
-      '/api/grafana/proxy': () => new Response(null, { status: 200 }),
     })
 
     renderServiceDeepDive()
@@ -156,10 +110,10 @@ describe('ServiceDeepDive page', () => {
 
   it('renders an error state for an unknown service whose deployments fail to load', async () => {
     stubRoutedFetch({
+      ...DEFAULT_ROUTES,
       '/api/services': () => jsonResponse([]),
       '/api/deployments': () => new Response(null, { status: 500 }),
       '/api/dora': () => new Response(null, { status: 500 }),
-      '/api/grafana/proxy': () => new Response(null, { status: 200 }),
     })
 
     renderServiceDeepDive('does-not-exist')

@@ -1,49 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import App from './App'
-import type { DeploymentDetail } from './types/deploymentDetail'
+import { jsonResponse, makeDeploymentDetail, stubRoutedFetch } from './test/fixtures'
 
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status })
-}
-
-function makeDeploymentDetail(overrides: Partial<DeploymentDetail> = {}): DeploymentDetail {
-  return {
-    id: 42,
-    service_id: 1,
-    commit_sha: 'abc123def',
-    branch: 'main',
-    author: 'alice',
-    status: 'deployed',
-    image_tag: 'v1.2.3',
-    started_at: '2026-08-29T09:55:00Z',
-    finished_at: '2026-08-29T10:00:00Z',
-    commit_at: '2026-08-29T09:50:00Z',
-    build_status: 'completed',
-    build_duration_s: 60,
-    sync_status: 'completed',
-    workflow_run_id: 100,
-    argocd_revision: 'def456',
-    created_at: '2026-08-29T09:50:00Z',
-    health_assessment: null,
-    service: { id: 1, name: 'orders', repo: 'org/orders', argocd_app: 'orders', namespace: 'deploylens', created_at: '2026-01-01T00:00:00Z' },
-    timeline: [],
-    health_evidence: [],
-    ...overrides,
-  }
-}
-
-function stubRoutedFetch(routes: Record<string, () => Response>) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input.toString()
-      for (const [prefix, respond] of Object.entries(routes)) {
-        if (url.startsWith(prefix)) return Promise.resolve(respond())
-      }
-      return Promise.resolve(new Response(null, { status: 404 }))
-    }),
-  )
+// App.tsx builds its QueryClient as a module-level singleton, so importing
+// it fresh per test (via resetModules) keeps each test's react-query cache
+// isolated — otherwise all 5 cases here would share one cache instance.
+async function renderApp() {
+  vi.resetModules()
+  const { default: App } = await import('./App')
+  return render(<App />)
 }
 
 const DEFAULT_ROUTES = {
@@ -65,7 +30,7 @@ describe('App routing', () => {
     stubRoutedFetch(DEFAULT_ROUTES)
     window.history.pushState({}, '', '/')
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument()
   })
@@ -74,7 +39,7 @@ describe('App routing', () => {
     stubRoutedFetch(DEFAULT_ROUTES)
     window.history.pushState({}, '', '/services/orders')
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByRole('heading', { name: 'orders' })).toBeInTheDocument()
   })
@@ -83,7 +48,7 @@ describe('App routing', () => {
     stubRoutedFetch(DEFAULT_ROUTES)
     window.history.pushState({}, '', '/deployments/42')
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByRole('heading', { name: 'Health evidence' })).toBeInTheDocument()
   })
@@ -92,7 +57,7 @@ describe('App routing', () => {
     stubRoutedFetch(DEFAULT_ROUTES)
     window.history.pushState({}, '', '/chat')
 
-    render(<App />)
+    await renderApp()
 
     expect(await screen.findByPlaceholderText(/ask about/i)).toBeInTheDocument()
   })
@@ -101,7 +66,7 @@ describe('App routing', () => {
     stubRoutedFetch(DEFAULT_ROUTES)
     window.history.pushState({}, '', '/this-route-does-not-exist')
 
-    const { container } = render(<App />)
+    const { container } = await renderApp()
 
     // No route (not even the AppLayout wrapper) matches an unregistered
     // path today, so nothing renders — the important thing is it doesn't throw.

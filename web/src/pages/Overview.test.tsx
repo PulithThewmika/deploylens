@@ -3,26 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Overview } from './Overview'
-import type { Service } from '../types/service'
-
-function makeService(overrides: Partial<Service> = {}): Service {
-  return {
-    id: 1,
-    name: 'orders',
-    namespace: 'deploylens',
-    repo: 'org/orders',
-    argocd_app: 'orders',
-    latest_deploy: {
-      commit_sha: 'abc123def',
-      author: 'alice',
-      status: 'deployed',
-      finished_at: '2026-08-29T10:00:00Z',
-    },
-    health: { score: 92, verdict: 'healthy' },
-    active_alert_count: 0,
-    ...overrides,
-  }
-}
+import { makeService } from '../test/fixtures'
 
 function renderOverview() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })

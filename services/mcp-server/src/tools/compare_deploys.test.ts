@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { query } from "../clients/postgres.js";
 import { instantQuery } from "../clients/prometheus.js";
 import { compareDeploys } from "./compare_deploys.js";
+import { parseResult } from "./test-utils.js";
 
 vi.mock("../clients/postgres.js", () => ({
   query: vi.fn(),
@@ -27,10 +28,6 @@ const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   health_verdict: "healthy",
   ...overrides,
 });
-
-function parseResult(result: { content: { type: "text"; text: string }[] }) {
-  return JSON.parse(result.content[0].text);
-}
 
 beforeEach(() => {
   mockedQuery.mockReset();

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { queryOne } from "../clients/postgres.js";
 import { getDeployHealth } from "./get_deploy_health.js";
+import { parseResult } from "./test-utils.js";
 
 vi.mock("../clients/postgres.js", () => ({
   queryOne: vi.fn(),
@@ -24,10 +25,6 @@ const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   details: {},
   ...overrides,
 });
-
-function parseResult(result: { content: { type: "text"; text: string }[] }) {
-  return JSON.parse(result.content[0].text);
-}
 
 beforeEach(() => {
   mockedQueryOne.mockReset();
