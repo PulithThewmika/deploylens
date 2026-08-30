@@ -39,9 +39,17 @@ services:
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MCP_SERVER_URL: ${MCP_SERVER_URL:-http://mcp-server:3001/mcp}
+      GRAFANA_URL: ${GRAFANA_URL:-http://grafana:3000}
+      GRAFANA_SERVICE_ACCOUNT_TOKEN: ${GRAFANA_SERVICE_ACCOUNT_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
+      mcp-server:
+        condition: service_started
+      grafana:
+        condition: service_started
 
   # ── Detection Agent ─────────────────────────────────────────────
   # Autonomous batch processor that scores deployment health every
@@ -61,6 +69,25 @@ services:
       ALERTMANAGER_URL: ${ALERTMANAGER_URL:-http://host.docker.internal:9093}
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
       OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── MCP Server ─────────────────────────────────────────────────
+  # Model Context Protocol server exposing deployment, metrics,
+  # and log tools for natural-language incident investigation.
+  mcp-server:
+    build:
+      context: ../services/mcp-server
+      dockerfile: Dockerfile
+    container_name: deploylens-mcp
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
+      LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
+      MCP_TRANSPORT: http
+      MCP_HTTP_PORT: "3001"
     depends_on:
       postgres:
         condition: service_healthy

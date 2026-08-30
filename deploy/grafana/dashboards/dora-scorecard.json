@@ -1,0 +1,312 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Deployment Frequency",
+      "description": "Average deploys/day over the selected window (dora_deploy_frequency).",
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "WITH days AS (\n  SELECT generate_series($__timeFrom()::date, $__timeTo()::date, interval '1 day')::date AS d\n),\ntotals AS (\n  SELECT deploy_date, SUM(deploy_count) AS cnt\n  FROM dora_deploy_frequency\n  WHERE ('$service' = '.*' OR service_name = '$service')\n    AND $__timeFilter(deploy_date)\n  GROUP BY deploy_date\n)\nSELECT\n  days.d AS time,\n  COALESCE(totals.cnt, 0) AS value\nFROM days\nLEFT JOIN totals ON totals.deploy_date = days.d\nORDER BY days.d"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.033 },
+              { "color": "blue", "value": 0.142 },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
+        "graphMode": "area",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Lead Time for Changes (median)",
+      "description": "Median seconds from commit to deploy (dora_lead_time, percentile_cont(0.5)).",
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  percentile_cont(0.5) WITHIN GROUP (ORDER BY lead_time_seconds) AS value\nFROM dora_lead_time\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(finished_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "blue", "value": 86400 },
+              { "color": "yellow", "value": 604800 },
+              { "color": "red", "value": 2592000 }
+            ]
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "Change Failure Rate",
+      "description": "% of deployments that failed or were assessed degraded/failed (dora_change_failure_rate).",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  ROUND(\n    COUNT(*) FILTER (WHERE is_failure)::numeric / NULLIF(COUNT(*), 0) * 100,\n    1\n  ) AS value\nFROM dora_change_failure_rate\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(started_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "blue", "value": 15 },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 45 }
+            ]
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "MTTR",
+      "description": "Mean time to recovery: average seconds from alert fired to resolved (dora_mttr).",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT AVG(mttr_seconds) AS value\nFROM dora_mttr\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(fired_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "blue", "value": 3600 },
+              { "color": "yellow", "value": 86400 },
+              { "color": "red", "value": 604800 }
+            ]
+          },
+          "links": [
+            {
+              "title": "View service details",
+              "url": "/d/service-deep-dive/service-deep-dive?var-service=${service}&from=${__from}&to=${__to}",
+              "targetBlank": false
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "graphMode": "none",
+        "colorMode": "value",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "type": "heatmap",
+      "title": "Deploys per Day",
+      "description": "Deploy count per service per day from dora_deploy_frequency — one row (Y axis) per service, colored by that day's deploy_count.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  deploy_date AS time,\n  deploy_count AS value,\n  service_name AS metric\nFROM dora_deploy_frequency\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(deploy_date)\nORDER BY deploy_date"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Greens",
+          "steps": 64
+        },
+        "yAxis": {
+          "unit": "short"
+        },
+        "cellGap": 2,
+        "tooltip": { "show": true, "yHistogram": false },
+        "legend": { "show": true }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Change Failure Rate Trend",
+      "description": "Daily change failure rate % over time (dora_change_failure_rate).",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT\n  date_trunc('day', started_at) AS time,\n  ROUND(\n    COUNT(*) FILTER (WHERE is_failure)::numeric / NULLIF(COUNT(*), 0) * 100,\n    1\n  ) AS value\nFROM dora_change_failure_rate\nWHERE ('$service' = '.*' OR service_name = '$service')\n  AND $__timeFilter(started_at)\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "blue", "value": 15 },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 45 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      }
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": ["deploylens", "dora-scorecard"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "Service",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "deploylens-postgres"
+        },
+        "query": "SELECT name FROM services ORDER BY name",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": { "text": "All", "value": ".*" }
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DORA Scorecard",
+  "uid": "dora-scorecard",
+  "version": 1,
+  "weekStart": ""
+}

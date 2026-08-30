@@ -132,7 +132,10 @@ async def list_deployments(
             SELECT d.id, d.service_id, s.name AS service_name,
                    d.commit_sha, d.branch, d.author, d.status,
                    d.image_tag, d.started_at, d.finished_at,
-                   ha.score AS health_score, ha.verdict AS health_verdict
+                   d.commit_at, d.build_status, d.build_duration_s,
+                   d.argocd_revision, d.sync_status,
+                   ha.score AS health_score, ha.verdict AS health_verdict,
+                   ha.assessed_at
             FROM deployments d
             JOIN services s ON s.id = d.service_id
             LEFT JOIN health_assessments ha ON ha.deployment_id = d.id
@@ -158,6 +161,7 @@ async def list_deployments(
             finished_at=row.finished_at,
             health=HealthSummary(score=row.health_score, verdict=row.health_verdict)
             if row.health_score is not None else None,
+            timeline=_build_timeline(row),
         )
         for row in rows
     ]
