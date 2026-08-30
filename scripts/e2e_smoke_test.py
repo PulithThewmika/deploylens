@@ -2,12 +2,21 @@
 """DeployLens end-to-end smoke test.
 
 Exercises the full deployment pipeline for real, with no mocks: pushes a
-commit that raises the payments service's ERROR_RATE chaos flag, then polls
-the ingest REST API until ArgoCD's sync creates a deployment record, the
-detection agent scores it as degraded/failed from live Prometheus metrics,
-and Alertmanager fires an alert on it. This proves the ArgoCD webhook,
-correlation engine, health scoring formula, and alerting pipeline all work
-together end to end — not just in isolation under mocks.
+commit that raises the payments component's ERROR_RATE chaos flag, then
+polls the ingest REST API until ArgoCD's sync creates a deployment record,
+the detection agent scores it as degraded/failed from live Prometheus
+metrics, and Alertmanager fires an alert on it. This proves the ArgoCD
+webhook, correlation engine, health scoring formula, and alerting pipeline
+all work together end to end — not just in isolation under mocks.
+
+Note: the ingest DB registers the whole sample app as a single service named
+"sample-app" (ArgoCD tracks frontend/orders/payments as one Application, one
+GitOps unit — see services.prom_components), not one row per microservice.
+Health scoring aggregates error_rate/latency across all three Prometheus
+components via max() (see agent/health_score.py:_aggregate_metrics), so a
+spike in payments alone still surfaces undiluted in the aggregate. This
+script therefore queries the ingest API by service="sample-app", while
+still editing only the payments deployment manifest to inject the fault.
 
 Prerequisites (not managed by this script):
   - The Kind cluster and docker-compose stack are up (`make cluster-up`,
@@ -53,7 +62,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "sample-app" / "deploy" / "payments" / "deployment.yaml"
-SERVICE = "payments"
+COMPONENT = "payments"  # the manifest/Prometheus label whose chaos flag we set
+SERVICE = "sample-app"  # the ingest-registered service that deployment rolls up under
 ERROR_RATE_FIELD_RE = re.compile(r'(- name: ERROR_RATE\s*\n\s*value: )"[^"]*"')
 
 
