@@ -284,6 +284,56 @@
         "sortBy": [{ "displayName": "fired_at", "desc": true }],
         "footer": { "show": false }
       }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Recent Safety Scores",
+      "description": "Pre-deploy safety scores (rule-based, not ML) computed on workflow_run.requested, most recent first.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "deploylens-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT\n  ss.computed_at,\n  s.name AS service,\n  ss.deployment_id,\n  ss.score,\n  ss.risk_factors\nFROM safety_scores ss\nJOIN deployments d ON d.id = ss.deployment_id\nJOIN services s ON s.id = d.service_id\nORDER BY ss.computed_at DESC\nLIMIT 20"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "score" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "gauge", "mode": "basic" }
+              },
+              { "id": "min", "value": 0 },
+              { "id": "max", "value": 100 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 40 },
+                    { "color": "red", "value": 70 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [{ "displayName": "computed_at", "desc": true }],
+        "footer": { "show": false }
+      }
     }
   ],
   "refresh": "30s",

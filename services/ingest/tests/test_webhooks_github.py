@@ -1,6 +1,7 @@
 """Tests for the GitHub webhook handler."""
 
 import json
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -47,6 +48,24 @@ async def test_requested_creates_building(client, sign_github_payload):
     data = resp.json()
     assert data["status"] == "ok"
     assert data["deployment_status"] == "building"
+
+
+@pytest.mark.asyncio
+async def test_requested_still_creates_deployment_when_safety_score_fails(client, mock_session, sign_github_payload):
+    """A bug or transient failure in safety scoring (a stretch feature) must
+    never prevent the core deployment record from being created."""
+    with patch(
+        "app.routers.webhooks_github.compute_safety_score",
+        AsyncMock(side_effect=RuntimeError("CFR query failed")),
+    ):
+        resp = await _post_github(client, _workflow_run_payload("requested"), sign_github_payload)
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "ok"
+    assert data["deployment_status"] == "building"
+    assert data["safety_score"] is None
+    mock_session.commit.assert_awaited()
 
 
 @pytest.mark.asyncio
@@ -165,7 +184,9 @@ async def test_duplicate_workflow_run_delivery_is_idempotent(client, mock_sessio
 
     assert resp1.status_code == 200
     assert resp2.status_code == 200
-    assert resp1.json() == resp2.json() == {"status": "ok", "deployment_status": "building"}
+    assert resp1.json() == resp2.json()
+    assert resp1.json()["status"] == "ok"
+    assert resp1.json()["deployment_status"] == "building"
 
     deployment_stmts = [s for s in executed_statements if getattr(getattr(s, "table", None), "name", None) == "deployments"]
     assert len(deployment_stmts) == 2
