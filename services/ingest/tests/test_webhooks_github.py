@@ -4,6 +4,7 @@ import json
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.dialects import postgresql
 
 
 def _workflow_run_payload(action="requested", conclusion=None, head_sha="abc1234567890", run_id=12345):
@@ -106,3 +107,32 @@ async def test_unknown_action_ignored(client, sign_github_payload):
     )
     assert resp.status_code == 200
     assert resp.json()["status"] == "ignored"
+
+
+@pytest.mark.asyncio
+async def test_duplicate_workflow_run_delivery_is_idempotent(client, mock_session, sign_github_payload):
+    """Redelivered webhooks must upsert via ON CONFLICT, never a bare insert (see
+    partial unique index on deployments(workflow_run_id))."""
+    executed_statements = []
+    original_execute = mock_session.execute
+
+    async def capture_execute(stmt):
+        executed_statements.append(stmt)
+        return await original_execute(stmt)
+
+    mock_session.execute = capture_execute
+
+    payload = _workflow_run_payload("requested", run_id=99999)
+    resp1 = await _post_github(client, payload, sign_github_payload)
+    resp2 = await _post_github(client, payload, sign_github_payload)
+
+    assert resp1.status_code == 200
+    assert resp2.status_code == 200
+    assert resp1.json() == resp2.json() == {"status": "ok", "deployment_status": "building"}
+
+    deployment_stmts = [s for s in executed_statements if getattr(getattr(s, "table", None), "name", None) == "deployments"]
+    assert len(deployment_stmts) == 2
+    for stmt in deployment_stmts:
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "ON CONFLICT" in compiled
+        assert "workflow_run_id" in compiled
