@@ -139,8 +139,10 @@ describe("generateIncidentReport", () => {
     const report: string = parsed.report;
 
     // error_rate is max()'d across components (agent's convention) — payments' 0.30 must win, not frontend's 0.01
-    expect(report).toContain("0.3000");
-    expect(report).not.toContain("| 0.0100 |");
+    const timelineSection = report.split("## Metric Timeline")[1].split("## Error Logs")[0];
+    expect(timelineSection).toContain("0.3000");
+    expect(timelineSection).not.toContain("0.0100");
+    expect(timelineSection).not.toContain("0.0200");
     expect(report).toContain("payments failure");
   });
 

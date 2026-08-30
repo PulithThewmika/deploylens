@@ -50,6 +50,10 @@ function fmtTime(d: Date | string | null): string {
   return new Date(d).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
 }
 
+function fmtNum(v: number | null): string {
+  return v == null ? "—" : v.toFixed(4);
+}
+
 // A "service" in the ingest DB can roll up several Prometheus/Loki
 // components (see services.prom_components — e.g. one ArgoCD Application
 // deploying frontend+orders+payments together is one ingest "service" but
@@ -195,9 +199,9 @@ function buildMarkdownReport(row: IncidentRow, metricSeries: Record<string, { t:
   if (row.score != null) {
     lines.push("| Metric | Baseline | Post-Deploy |");
     lines.push("| --- | --- | --- |");
-    lines.push(`| Error rate | ${row.error_rate_base ?? "—"} | ${row.error_rate_post ?? "—"} |`);
-    lines.push(`| p99 latency (ms) | ${row.latency_p99_base_ms ?? "—"} | ${row.latency_p99_post_ms ?? "—"} |`);
-    lines.push(`| Restarts | ${row.restarts_base ?? "—"} | ${row.restarts_post ?? "—"} |`);
+    lines.push(`| Error rate | ${fmtNum(row.error_rate_base)} | ${fmtNum(row.error_rate_post)} |`);
+    lines.push(`| p99 latency (ms) | ${fmtNum(row.latency_p99_base_ms)} | ${fmtNum(row.latency_p99_post_ms)} |`);
+    lines.push(`| Restarts | ${fmtNum(row.restarts_base)} | ${fmtNum(row.restarts_post)} |`);
   } else {
     lines.push("_This deployment has not been health-assessed yet._");
   }
