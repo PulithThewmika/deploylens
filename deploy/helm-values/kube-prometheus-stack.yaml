@@ -18,6 +18,12 @@ prometheus:
     # Dev retention — keep it small for a Kind cluster
     retention: 7d
 
+    # This Prometheus doubles as the "central platform" Prometheus that
+    # customer-side deploylens-agent Helm charts (deploy/helm/deploylens-agent)
+    # remote_write to (E15-T2 validation). Needs the receiver enabled to
+    # accept those writes.
+    enableRemoteWriteReceiver: true
+
     # Resource limits sized for a single-node Kind cluster
     resources:
       requests:
