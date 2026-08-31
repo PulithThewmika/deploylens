@@ -1,0 +1,114 @@
+# CodeRabbit configuration for DeployLens
+# https://docs.coderabbit.ai/reference/configuration
+
+language: en-US
+early_access: false
+
+reviews:
+  profile: assertive          # solo academic project — prefer more findings over fewer
+  request_changes_workflow: false   # comments only, don't block your own merges
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "dev"
+      - "main"
+
+  path_filters:
+    - "!**/migrations/**"       # SQL migrations reviewed manually against doc 02
+    - "!**/*.lock"
+    - "!**/package-lock.json"
+    - "!web/dist/**"
+    - "!**/*.min.js"
+
+  path_instructions:
+    - path: "services/agent/agent/health_score.py"
+      instructions: >
+        This implements a FIXED formula from spec doc 05 — do not suggest
+        changing weights, clamp ranges, or window sizes even if they look
+        unusual. Flag ONLY: (1) deviation from clamp((post-base)/0.05,0,1)
+        for error_rate, clamp((post/base-1.2)/1.8,0,1) for latency_p99,
+        clamp((post-base)/3.0,0,1) for restarts; (2) weights not summing
+        with error_rate=45, latency_p99=30, restarts=25; (3) verdict
+        thresholds other than >=80 healthy, 50-79 degraded, <50 failed;
+        (4) missing the low-request-volume guard rail (<0.1 rps in both
+        windows must skip error/latency penalties and note it in `details`).
+
+    - path: "services/ingest/app/correlation/engine.py"
+      instructions: >
+        Correlation is commit_sha first, image_tag fallback second — this
+        is because ArgoCD's sync revision SHA differs from the original
+        GitHub commit SHA after a tag-bump commit. Do not suggest removing
+        the image_tag path or simplifying to SHA-only matching. Every
+        match branch (SHA match, image_tag fallback, orphan creation,
+        auto-registration) must log at INFO with enough context to trace
+        the decision — flag any correlation branch that's silent.
+
+    - path: "services/ingest/app/routers/webhooks_*.py"
+      instructions: >
+        All webhook writes must be idempotent via INSERT ... ON CONFLICT
+        against the partial unique indexes on workflow_run_id and
+        (argocd_revision, service_id) — flag any webhook write that could
+        double-insert on redelivery. GitHub webhooks must verify
+        X-Hub-Signature-256 HMAC and return 401 on mismatch; ArgoCD
+        webhooks must verify the shared bearer token and return 401 on
+        mismatch. Flag any handler that processes a payload before
+        verifying its signature/token.
+
+    - path: "services/**/*.py"
+      instructions: >
+        Async-first: flag blocking I/O (sync requests/psycopg2 calls,
+        blocking sleep) in async def functions. SQLAlchemy 2.x style only
+        — flag legacy Query API usage (session.query(...)). Type hints are
+        required on function signatures. Every Prometheus metric emitted
+        or queried must carry a `service` label — flag PromQL without a
+        service filter or metric emission missing the service label.
+
+    - path: "services/mcp-server/**"
+      instructions: >
+        This is a Node/TypeScript MCP server exposing deployment/metrics/
+        logs tools backed by the same PostgreSQL schema as the ingest
+        service. Flag any query logic duplicated from the DORA SQL views
+        (dora_deploy_frequency, dora_lead_time, dora_change_failure_rate,
+        dora_mttr) instead of reading from them directly.
+
+    - path: "web/**"
+      instructions: >
+        React shell (Vite). Flag hardcoded API origins instead of using
+        the configured ingest API base URL, and any secret/token embedded
+        client-side (this must come through the ingest chat proxy, never
+        directly to Anthropic or Grafana from the browser).
+
+    - path: "deploy/grafana/dashboards/**/*.sql"
+      instructions: >
+        This is a read-only query against the grafana_ro role backing a
+        Grafana panel, not a migration. Flag any write statement
+        (INSERT/UPDATE/DELETE/DDL) or any query bypassing the DORA SQL
+        views (dora_deploy_frequency, dora_lead_time,
+        dora_change_failure_rate, dora_mttr) that duplicates their logic
+        instead of reading from them.
+
+tools:
+  ruff:
+    enabled: true
+  eslint:
+    enabled: true
+  markdownlint:
+    enabled: true
+  yamllint:
+    enabled: true
+  gitleaks:
+    enabled: true            # catches accidental .env / secret commits
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
