@@ -7,6 +7,19 @@ metadata:
     {{- include "deploylens-agent.labels" . | nindent 4 }}
     {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "blast-radius") | nindent 4 }}
 ---
+# Long-lived token Secret (Kubernetes 1.24+ no longer auto-creates these) so
+# the central detection agent — which runs outside this cluster — can
+# authenticate as this ServiceAccount. See NOTES.txt for how to extract it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius-token") }}
+  labels:
+    {{- include "deploylens-agent.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/service-account.name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}
+type: kubernetes.io/service-account-token
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -14,16 +27,16 @@ metadata:
   labels:
     {{- include "deploylens-agent.labels" . | nindent 4 }}
 rules:
-  # Read-only — discovers service-to-service dependencies for the blast
-  # radius feature (E14-T3). No write/delete verbs on anything.
+  # Read-only, matching exactly what the blast-radius discovery job
+  # (agent/blast_radius.py) queries: the list of Services (to know valid
+  # in-cluster DNS names) and Deployments (to inspect container env vars
+  # for URLs referencing those names). No pods/endpoints/replicasets/
+  # networkpolicies access — the discovery mechanism doesn't use them.
   - apiGroups: [""]
-    resources: ["pods", "services", "endpoints"]
+    resources: ["services"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["networkpolicies"]
+    resources: ["deployments"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1

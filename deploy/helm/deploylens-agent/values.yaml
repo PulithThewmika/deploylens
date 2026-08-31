@@ -53,12 +53,14 @@ webhookTokens:
   argocd: ""
   alertmanager: ""
 
-# ── Blast radius (optional, forward-compatible) ──────────────────────
-# Read-only RBAC for the blast-radius discovery feature (E14-T3). Off by
-# default since that feature doesn't exist yet — flip this on once it
-# ships and points at this cluster's API server.
+# ── Blast radius ───────────────────────────────────────────────────────
+# Read-only RBAC (get/list/watch on Services and Deployments only) for the
+# blast-radius discovery feature (E14-T3, agent/blast_radius.py). The
+# discovery job itself runs centrally (in the detection agent), not in
+# this chart — this just grants the agent's ServiceAccount read access to
+# this cluster's Services/Deployments so it can discover dependencies here.
 blastRadius:
-  enabled: false
+  enabled: true
 
 # ── Misc ──────────────────────────────────────────────────────────────
 # Applied to every resource this chart creates.

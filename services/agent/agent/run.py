@@ -24,12 +24,15 @@ from .config import (
     PROM_URL,
     ALERTMANAGER_URL,
     DATABASE_URL,
+    BLAST_RADIUS_INTERVAL_SECONDS,
 )
 from .db import get_session, dispose_engine, engine
 from .health_score import assess_deployment
 from .alerting import fire_alert, close_alertmanager_client
 from .promql import close_prom_client
 from .reconciliation import reconcile_active_alerts
+from .blast_radius import run_discovery, get_monitored_namespaces
+from .k8s_client import blast_radius_enabled, close_k8s_client
 
 logging.basicConfig(
     level=logging.INFO,
@@ -182,6 +185,22 @@ async def agent_loop() -> None:
         logger.exception("Agent loop error")
 
 
+async def blast_radius_loop() -> None:
+    """Discover service dependencies and upsert them into service_dependencies."""
+    try:
+        session = await get_session()
+        async with session:
+            namespaces = await get_monitored_namespaces(session)
+            if not namespaces:
+                logger.info("Blast-radius discovery: no monitored namespaces, skipping")
+                return
+            written = await run_discovery(session, namespaces)
+            await session.commit()
+            logger.info("Blast-radius discovery complete: %d edge(s) written", written)
+    except Exception:
+        logger.exception("Blast-radius discovery loop error")
+
+
 async def verify_connections() -> None:
     """Verify database connectivity on startup."""
     async with engine.begin() as conn:
@@ -198,6 +217,7 @@ async def shutdown(scheduler: AsyncIOScheduler) -> None:
     scheduler.shutdown(wait=False)
     await close_prom_client()
     await close_alertmanager_client()
+    await close_k8s_client()
     await dispose_engine()
     logger.info("Agent stopped.")
 
@@ -217,13 +237,30 @@ async def main() -> None:
         max_instances=1,
         next_run_time=None,
     )
+    if blast_radius_enabled():
+        scheduler.add_job(
+            blast_radius_loop,
+            "interval",
+            seconds=BLAST_RADIUS_INTERVAL_SECONDS,
+            id="blast_radius_loop",
+            max_instances=1,
+            next_run_time=None,
+        )
+    else:
+        logger.info("Blast-radius discovery disabled (K8S_API_SERVER/K8S_TOKEN/K8S_CA_CERT_B64 not set)")
     scheduler.start()
 
     # Run once immediately on startup to catch up on unassessed deployments
     await agent_loop()
+    if blast_radius_enabled():
+        await blast_radius_loop()
 
     # Schedule subsequent runs
     scheduler.reschedule_job("agent_loop", trigger="interval", seconds=AGENT_INTERVAL_SECONDS)
+    if blast_radius_enabled():
+        scheduler.reschedule_job(
+            "blast_radius_loop", trigger="interval", seconds=BLAST_RADIUS_INTERVAL_SECONDS
+        )
 
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):

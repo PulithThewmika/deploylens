@@ -48,9 +48,13 @@ import {
   generateIncidentReportSchema,
   generateIncidentReport,
 } from "./tools/generate_incident_report.js";
+import {
+  getBlastRadiusSchema,
+  getBlastRadius,
+} from "./tools/get_blast_radius.js";
 import { wrapTool } from "./tools/wrap-tool.js";
 
-const TOOL_COUNT = 10;
+const TOOL_COUNT = 11;
 
 // A fresh McpServer per connection — see createMcpServer() call sites below
 // for why this is a factory rather than a module-level singleton.
@@ -138,6 +142,14 @@ function createMcpServer(): McpServer {
     "Generate a chronological markdown incident report for an alert — deployment details, metric timeline, error logs, and alert metadata, assembled directly from Postgres, Prometheus, and Loki. Useful as-is for pasting into an incident channel.",
     generateIncidentReportSchema,
     wrapTool("generate_incident_report", generateIncidentReport),
+  );
+
+  // ── Tool: get_blast_radius ────────────────────────────────────────
+  server.tool(
+    "get_blast_radius",
+    "Get the downstream services/components that depend on a given service or component (discovered from Kubernetes Service/Deployment config, e.g. 'orders calls payments'), each with its current deployment health status — useful for assessing what else might be affected if a service degrades.",
+    getBlastRadiusSchema,
+    wrapTool("get_blast_radius", getBlastRadius),
   );
 
   return server;
