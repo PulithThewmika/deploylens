@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -30,25 +31,56 @@ def _service(name: str) -> dict:
     return {"metadata": {"name": name}}
 
 
+@asynccontextmanager
+async def _noop_savepoint():
+    yield
+
+
+def _mock_session_with_begin_nested() -> AsyncMock:
+    """A session whose begin_nested() is a real (no-op) async context manager."""
+    session = AsyncMock()
+    session.begin_nested = MagicMock(side_effect=lambda: _noop_savepoint())
+    return session
+
+
 class TestExtractEnvUrlTargets:
     def test_matches_url_env_var_referencing_known_service(self):
         deployment = _deployment("frontend", [{"name": "ORDERS_URL", "value": "http://orders:8000"}])
-        targets = _extract_env_url_targets(deployment, {"orders", "payments"})
+        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "deploylens")
         assert targets == {"orders"}
 
     def test_ignores_url_not_matching_a_known_service(self):
         deployment = _deployment("frontend", [{"name": "EXTERNAL_URL", "value": "http://example.com"}])
-        targets = _extract_env_url_targets(deployment, {"orders", "payments"})
+        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "deploylens")
         assert targets == set()
 
     def test_ignores_non_url_env_vars(self):
         deployment = _deployment("frontend", [{"name": "ERROR_RATE", "value": "0"}])
-        targets = _extract_env_url_targets(deployment, {"orders"})
+        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
         assert targets == set()
 
     def test_handles_missing_env_value(self):
         deployment = _deployment("frontend", [{"name": "SOME_VAR"}])
-        targets = _extract_env_url_targets(deployment, {"orders"})
+        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        assert targets == set()
+
+    def test_matches_namespace_qualified_url_in_same_namespace(self):
+        deployment = _deployment("frontend", [{"name": "ORDERS_URL", "value": "http://orders.deploylens:8000"}])
+        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        assert targets == {"orders"}
+
+    def test_matches_fully_qualified_cluster_local_url(self):
+        deployment = _deployment(
+            "frontend", [{"name": "ORDERS_URL", "value": "http://orders.deploylens.svc.cluster.local:8000"}]
+        )
+        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        assert targets == {"orders"}
+
+    def test_skips_cross_namespace_reference_rather_than_misattributing(self):
+        """A same-named local Service must not be matched for a different namespace's target."""
+        deployment = _deployment("frontend", [{"name": "PAYMENTS_URL", "value": "http://payments.billing:8000"}])
+        # "payments" exists locally too, but the URL explicitly targets "billing".
+        targets = _extract_env_url_targets(deployment, {"payments"}, "deploylens")
         assert targets == set()
 
 
@@ -109,18 +141,22 @@ class TestGetMonitoredNamespaces:
 class TestRunDiscovery:
     @pytest.mark.asyncio
     async def test_writes_edges_and_resolves_service_ids_via_prom_components(self):
-        session = AsyncMock()
+        session = _mock_session_with_begin_nested()
 
-        def _resolve_result(component):
+        def _resolve_result(service_id):
             row = MagicMock()
-            row.id = 31
+            row.id = service_id
             return row
 
-        # First two execute() calls resolve source_id/target_id per edge,
-        # then the INSERT itself.
-        results = [MagicMock(first=lambda: _resolve_result("frontend")),
-                   MagicMock(first=lambda: _resolve_result("orders")),
-                   MagicMock()]
+        insert_result = MagicMock()
+        insert_result.rowcount = 1
+
+        # Two SELECTs (resolve source_id, target_id) then the INSERT.
+        results = [
+            MagicMock(first=lambda: _resolve_result(31)),
+            MagicMock(first=lambda: _resolve_result(31)),
+            insert_result,
+        ]
         session.execute = AsyncMock(side_effect=results)
 
         with patch("agent.blast_radius.discover_namespace_edges", AsyncMock(return_value=[("frontend", "orders")])):
@@ -129,8 +165,33 @@ class TestRunDiscovery:
         assert written == 1
 
     @pytest.mark.asyncio
+    async def test_does_not_count_an_already_known_edge_as_written(self):
+        """ON CONFLICT DO NOTHING (rowcount=0) must not inflate the counter."""
+        session = _mock_session_with_begin_nested()
+
+        def _resolve_result(service_id):
+            row = MagicMock()
+            row.id = service_id
+            return row
+
+        insert_result = MagicMock()
+        insert_result.rowcount = 0  # conflict — already existed
+
+        results = [
+            MagicMock(first=lambda: _resolve_result(31)),
+            MagicMock(first=lambda: _resolve_result(31)),
+            insert_result,
+        ]
+        session.execute = AsyncMock(side_effect=results)
+
+        with patch("agent.blast_radius.discover_namespace_edges", AsyncMock(return_value=[("frontend", "orders")])):
+            written = await run_discovery(session, ["deploylens"])
+
+        assert written == 0
+
+    @pytest.mark.asyncio
     async def test_skips_edge_when_component_not_in_any_prom_components(self):
-        session = AsyncMock()
+        session = _mock_session_with_begin_nested()
         # Both lookups return no match.
         session.execute = AsyncMock(return_value=MagicMock(first=lambda: None))
 
@@ -141,10 +202,41 @@ class TestRunDiscovery:
 
     @pytest.mark.asyncio
     async def test_continues_to_next_namespace_on_discovery_failure(self):
-        session = AsyncMock()
+        session = _mock_session_with_begin_nested()
         with patch(
             "agent.blast_radius.discover_namespace_edges",
             AsyncMock(side_effect=[Exception("K8s API unreachable"), []]),
         ):
             written = await run_discovery(session, ["ns-a", "ns-b"])
         assert written == 0
+
+    @pytest.mark.asyncio
+    async def test_continues_to_next_edge_when_one_edge_fails_to_persist(self):
+        """A DB error on one edge must not lose edges already resolved this run."""
+        session = _mock_session_with_begin_nested()
+
+        def _resolve_result(service_id):
+            row = MagicMock()
+            row.id = service_id
+            return row
+
+        ok_insert = MagicMock()
+        ok_insert.rowcount = 1
+
+        # Edge 1: source resolve raises; edge 2: resolves and inserts fine.
+        session.execute = AsyncMock(
+            side_effect=[
+                Exception("transient DB error"),
+                MagicMock(first=lambda: _resolve_result(31)),
+                MagicMock(first=lambda: _resolve_result(31)),
+                ok_insert,
+            ]
+        )
+
+        with patch(
+            "agent.blast_radius.discover_namespace_edges",
+            AsyncMock(return_value=[("frontend", "orders"), ("orders", "payments")]),
+        ):
+            written = await run_discovery(session, ["deploylens"])
+
+        assert written == 1

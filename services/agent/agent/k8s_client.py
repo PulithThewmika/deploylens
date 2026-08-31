@@ -27,27 +27,32 @@ from .config import K8S_API_SERVER, K8S_CA_CERT_B64, K8S_TOKEN
 logger = logging.getLogger("deploylens.agent.k8s_client")
 
 _client: httpx.AsyncClient | None = None
-_ca_cert_file: tempfile._TemporaryFileWrapper | None = None
 
 
 def blast_radius_enabled() -> bool:
     return bool(K8S_API_SERVER and K8S_TOKEN and K8S_CA_CERT_B64)
 
 
+def _build_ssl_context() -> ssl.SSLContext:
+    # ssl.create_default_context(cafile=...) reads and parses the file
+    # synchronously during this call — nothing holds the path open
+    # afterward, so the temp file is deleted immediately rather than
+    # leaking one on every client (re)creation.
+    with tempfile.NamedTemporaryFile(suffix=".crt") as ca_cert_file:
+        ca_cert_file.write(base64.b64decode(K8S_CA_CERT_B64))
+        ca_cert_file.flush()
+        ssl_context = ssl.create_default_context(cafile=ca_cert_file.name)
+    ssl_context.check_hostname = False
+    return ssl_context
+
+
 def get_k8s_client() -> httpx.AsyncClient:
-    global _client, _ca_cert_file
+    global _client
     if _client is None or _client.is_closed:
-        _ca_cert_file = tempfile.NamedTemporaryFile(suffix=".crt", delete=False)
-        _ca_cert_file.write(base64.b64decode(K8S_CA_CERT_B64))
-        _ca_cert_file.flush()
-
-        ssl_context = ssl.create_default_context(cafile=_ca_cert_file.name)
-        ssl_context.check_hostname = False
-
         _client = httpx.AsyncClient(
             base_url=K8S_API_SERVER,
             headers={"Authorization": f"Bearer {K8S_TOKEN}"},
-            verify=ssl_context,
+            verify=_build_ssl_context(),
             timeout=10.0,
         )
     return _client

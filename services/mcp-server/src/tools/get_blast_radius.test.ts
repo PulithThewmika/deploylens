@@ -30,9 +30,12 @@ describe("getBlastRadius", () => {
   });
 
   it("scopes to just the queried component when a component name is given", async () => {
-    mockedQueryOne
-      .mockResolvedValueOnce({ id: 31, name: "sample-app", prom_components: ["frontend", "orders", "payments"] })
-      .mockResolvedValueOnce({ verdict: "healthy", score: 92, assessed_at: new Date("2026-08-30T10:00:00Z") });
+    mockedQueryOne.mockResolvedValueOnce({
+      id: 31,
+      name: "sample-app",
+      prom_components: ["frontend", "orders", "payments"],
+      matched_by_name: false,
+    });
     mockedQuery.mockResolvedValueOnce([
       {
         source_component: "orders",
@@ -40,6 +43,9 @@ describe("getBlastRadius", () => {
         dep_type: "calls",
         target_service_id: 31,
         target_service_name: "sample-app",
+        verdict: "healthy",
+        score: 92,
+        assessed_at: new Date("2026-08-30T10:00:00Z"),
       },
     ]);
 
@@ -53,6 +59,8 @@ describe("getBlastRadius", () => {
       target_component: "payments",
       current_health: { verdict: "healthy", score: 92 },
     });
+    // Single batched query, not one queryOne per edge.
+    expect(mockedQueryOne).toHaveBeenCalledTimes(1);
     expect(mockedQuery).toHaveBeenCalledWith(expect.any(String), [31, ["orders"]]);
   });
 
@@ -61,6 +69,7 @@ describe("getBlastRadius", () => {
       id: 31,
       name: "sample-app",
       prom_components: ["frontend", "orders", "payments"],
+      matched_by_name: true,
     });
     mockedQuery.mockResolvedValueOnce([
       {
@@ -69,6 +78,9 @@ describe("getBlastRadius", () => {
         dep_type: "calls",
         target_service_id: 31,
         target_service_name: "sample-app",
+        verdict: "degraded",
+        score: 60,
+        assessed_at: new Date(),
       },
       {
         source_component: "orders",
@@ -76,9 +88,11 @@ describe("getBlastRadius", () => {
         dep_type: "calls",
         target_service_id: 31,
         target_service_name: "sample-app",
+        verdict: "degraded",
+        score: 60,
+        assessed_at: new Date(),
       },
     ]);
-    mockedQueryOne.mockResolvedValue({ verdict: "degraded", score: 60, assessed_at: new Date() });
 
     const result = await getBlastRadius({ service: "sample-app" });
     const parsed = parseResult(result);
@@ -90,7 +104,12 @@ describe("getBlastRadius", () => {
   });
 
   it("returns an empty downstream list with a clear summary when there are no discovered edges", async () => {
-    mockedQueryOne.mockResolvedValueOnce({ id: 31, name: "sample-app", prom_components: ["payments"] });
+    mockedQueryOne.mockResolvedValueOnce({
+      id: 31,
+      name: "sample-app",
+      prom_components: ["payments"],
+      matched_by_name: false,
+    });
     mockedQuery.mockResolvedValueOnce([]);
 
     const result = await getBlastRadius({ service: "payments" });
@@ -98,5 +117,23 @@ describe("getBlastRadius", () => {
 
     expect(parsed.downstream).toEqual([]);
     expect(parsed.summary).toBe("payments has no discovered downstream dependencies");
+  });
+
+  it("prefers an exact services.name match over a prom_components collision, deterministically", async () => {
+    // matched_by_name comes straight from the query/ORDER BY, so the tool
+    // doesn't need to re-derive which column matched — this just checks
+    // the branch follows that field rather than re-comparing strings.
+    mockedQueryOne.mockResolvedValueOnce({
+      id: 5,
+      name: "orders",
+      prom_components: ["orders-worker"],
+      matched_by_name: true,
+    });
+    mockedQuery.mockResolvedValueOnce([]);
+
+    const result = await getBlastRadius({ service: "orders" });
+    const parsed = parseResult(result);
+
+    expect(parsed.queried_components).toEqual(["orders-worker"]);
   });
 });
