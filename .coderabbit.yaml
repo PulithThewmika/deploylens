@@ -83,11 +83,14 @@ reviews:
         client-side (this must come through the ingest chat proxy, never
         directly to Anthropic or Grafana from the browser).
 
-    - path: "**/*.sql"
+    - path: "deploy/grafana/dashboards/**/*.sql"
       instructions: >
-        Migrations must be idempotent (safe to run twice) and named
-        V00N__description.sql. Flag non-idempotent DDL (CREATE TABLE
-        without IF NOT EXISTS / CREATE OR REPLACE where applicable).
+        This is a read-only query against the grafana_ro role backing a
+        Grafana panel, not a migration. Flag any write statement
+        (INSERT/UPDATE/DELETE/DDL) or any query bypassing the DORA SQL
+        views (dora_deploy_frequency, dora_lead_time,
+        dora_change_failure_rate, dora_mttr) that duplicates their logic
+        instead of reading from them.
 
   tools:
     ruff:
