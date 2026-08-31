@@ -94,12 +94,18 @@ kind delete cluster --name deploylens-agent-validate
 - All within the 5-minute-per-signal acceptance criteria and well inside the
   overall 10-minute budget.
 
-### Cleanup after validation
+### Cleanup after validation (required, not optional)
 
-The NodePort services on the central cluster (`prometheus-nodeport-validation`,
-`loki-nodeport-validation`) are left in place — validation-only, not part of
-any real install path, and easy to identify (`labels.purpose: e15-t2-validation`).
-Remove with:
+`enableRemoteWriteReceiver: true` has no built-in authentication, and the
+NodePort Services in `central-platform-nodeports.yaml` bind on the node's
+host interface — not just the internal cluster network — so leaving them up
+means anything that can reach the Kind node's container IP can write
+arbitrary metrics into the central Prometheus, or read/write Loki, with zero
+auth. That's an acceptable risk only for the few minutes validation is
+actually running. Delete the NodePort Services immediately afterward:
 ```bash
 kubectl --context kind-deploylens -n monitoring delete -f deploy/helm/deploylens-agent/central-platform-nodeports.yaml
 ```
+(`enableRemoteWriteReceiver: true` itself stays enabled — it's needed for
+any future validation run and only accepts writes reachable via the
+now-deleted NodePorts or from inside the cluster's own pod network.)
