@@ -42,9 +42,23 @@ pipeline with a secretKeyRef instead of hardcoding them:
 ── Blast radius (optional) ──────────────────────────────────────────
 
 {{- if .Values.blastRadius.enabled }}
-Blast-radius RBAC is enabled — a read-only ServiceAccount/ClusterRole for
-service-dependency discovery is installed
+Blast-radius RBAC is enabled — a read-only ServiceAccount/ClusterRole
+(get/list/watch on Services and Deployments only) for service-dependency
+discovery is installed
 ({{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}).
+
+The central detection agent runs outside this cluster and needs this
+ServiceAccount's token to authenticate. Extract it from the Secret this
+chart created:
+     kubectl get secret -n {{ .Release.Namespace }} \
+       {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
+       -o jsonpath='{.data.token}' | base64 -d
+     kubectl get secret -n {{ .Release.Namespace }} \
+       {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
+       -o jsonpath='{.data.ca\.crt}'
+   Then set K8S_API_SERVER / K8S_TOKEN / K8S_CA_CERT_B64 wherever the
+   central agent runs (see deploy/scripts/create-blast-radius-sa.sh for
+   the equivalent flow against the dev cluster).
 {{- else }}
 Blast-radius RBAC is currently disabled (blastRadius.enabled=false). Set
 it to true once you're ready to use the blast-radius discovery feature.
