@@ -205,7 +205,7 @@ Issue numbering: epics are `[EPIC-00N]`, tasks are `[EN-TM]`. Issues #1–28 are
 - **Migrations:** versioned `V00N__description.sql`, idempotent (safe to run twice), applied via a tracked runner.
 - **Tests:** pytest; unit tests live next to each service (`services/<name>/tests/`). Webhook handlers and the correlation engine and health score formula are the priority test surfaces — each task's issue lists the required test cases.
 - **Correlation decisions are logged at INFO** — every match (SHA, image_tag fallback, orphan creation, auto-registration) must be traceable in logs.
-- **Docker:** each service has its own Dockerfile; images for the sample app go to ghcr.io tagged with short SHA (never `latest`).
+- **Docker:** each service has its own Dockerfile; images go to ghcr.io tagged with short SHA (never `latest`). The sample app's Dockerfiles/CI live in [deploylens-sample-app](https://github.com/PulithThewmika/deploylens-sample-app), not here.
 
 ## Gotchas
 
