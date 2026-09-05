@@ -6,6 +6,10 @@ from .health_assessment import HealthAssessment
 from .alert import Alert
 from .safety_score import SafetyScore
 from .service_dependency import ServiceDependency
+from .organization import Organization
+from .user import User
+from .org_membership import OrgMembership
+from .api_key import ApiKey
 
 __all__ = [
     "Base",
@@ -16,4 +20,8 @@ __all__ = [
     "Alert",
     "SafetyScore",
     "ServiceDependency",
+    "Organization",
+    "User",
+    "OrgMembership",
+    "ApiKey",
 ]
