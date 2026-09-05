@@ -23,7 +23,7 @@ def _workflow_run_payload(action="requested", conclusion=None, head_sha="abc1234
     return {
         "action": action,
         "workflow_run": wr,
-        "repository": {"full_name": "PulithThewmika/deploylens"},
+        "repository": {"full_name": "PulithThewmika/kubex"},
     }
 
 

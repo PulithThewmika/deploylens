@@ -44,7 +44,7 @@ def _mock_deploy_detail_row(
     sync_status="completed", workflow_run_id=12345,
     argocd_revision="def5678", created_at=None,
     s_id=1, s_name="orders", s_repo="org/orders",
-    s_argocd_app="orders", s_namespace="deploylens", s_created_at=None,
+    s_argocd_app="orders", s_namespace="kubex", s_created_at=None,
     ha_id=1, score=85, verdict="healthy",
     error_rate_base=0.01, error_rate_post=0.02,
     latency_p99_base_ms=100.0, latency_p99_post_ms=120.0,

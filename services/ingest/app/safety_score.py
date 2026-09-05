@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .models.service import Service
 from .promql import fetch_cluster_utilization
 
-logger = logging.getLogger("deploylens.safety_score")
+logger = logging.getLogger("kubex.safety_score")
 
 GITHUB_API_TOKEN = os.environ.get("GITHUB_API_TOKEN", "")
 GITHUB_API_URL = "https://api.github.com"

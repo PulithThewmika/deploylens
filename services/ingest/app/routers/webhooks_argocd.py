@@ -17,7 +17,7 @@ from ..db import get_session
 from ..models.deployment import Deployment
 from ..models.pipeline_event import PipelineEvent
 
-logger = logging.getLogger("deploylens.webhooks.argocd")
+logger = logging.getLogger("kubex.webhooks.argocd")
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 

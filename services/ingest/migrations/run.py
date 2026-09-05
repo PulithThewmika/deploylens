@@ -1,5 +1,5 @@
 """
-Migration runner for DeployLens.
+Migration runner for KubeX.
 
 Executes versioned SQL migration files in order against PostgreSQL.
 Tracks applied versions in the schema_versions table.
@@ -77,7 +77,7 @@ def run_migrations(url: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run DeployLens migrations")
+    parser = argparse.ArgumentParser(description="Run KubeX migrations")
     parser.add_argument("--url", default=os.environ.get("DATABASE_URL"))
     args = parser.parse_args()
 

@@ -5,7 +5,7 @@ import os
 
 from fastapi import Header, HTTPException, Request
 
-logger = logging.getLogger("deploylens.ingest.auth")
+logger = logging.getLogger("kubex.ingest.auth")
 
 GITHUB_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
 ARGOCD_WEBHOOK_TOKEN = os.environ.get("ARGOCD_WEBHOOK_TOKEN", "")
