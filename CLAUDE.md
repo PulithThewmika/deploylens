@@ -1,8 +1,8 @@
-# CLAUDE.md — DeployLens
+# CLAUDE.md — KubeX
 
 ## What This Project Is
 
-DeployLens is a **deployment-aware observability platform**. It correlates GitHub Actions (CI), ArgoCD (CD), and Kubernetes runtime health into unified per-deployment records, autonomously scores every release's health, computes DORA metrics, and exposes the full surface through an MCP server for natural-language incident investigation.
+KubeX is a **deployment-aware observability platform**. It correlates GitHub Actions (CI), ArgoCD (CD), and Kubernetes runtime health into unified per-deployment records, autonomously scores every release's health, computes DORA metrics, and exposes the full surface through an MCP server for natural-language incident investigation.
 
 The novel core is the **correlation engine**: linking CI events and CD events into one deployment record, and the **health scoring agent**: automatically answering "did this deployment make things worse?"
 
@@ -22,7 +22,7 @@ ArgoCD Notifications ──────▶ │  Ingest Service │──▶ Post
 ```
 
 **Two runtime zones:**
-- **Kind cluster** (`deploylens`): sample app (frontend → orders → payments), Prometheus stack, Loki + Fluent-Bit, ArgoCD, Alertmanager — all in-cluster.
+- **Kind cluster** (`kubex`): sample app (frontend → orders → payments), Prometheus stack, Loki + Fluent-Bit, ArgoCD, Alertmanager — all in-cluster.
 - **docker-compose** (central platform): PostgreSQL 16, ingest service, Grafana, detection agent. Runs outside the cluster for fast iteration.
 
 **PostgreSQL is the integration contract** — every producer (ingest, agent) writes to it; every consumer (MCP server, Grafana, REST API) reads from it.
@@ -143,7 +143,7 @@ make up / down                   # docker-compose lifecycle
 make forwards / forwards-stop    # port-forwards: Prometheus 9090, Loki 3100, Alertmanager 9093 (PIDs in .pids)
 make argocd-forward              # ArgoCD UI at localhost:8443
 make logs                        # docker-compose log tail
-make db-shell                    # psql into deploylens DB
+make db-shell                    # psql into kubex DB
 make tunnel                      # ngrok/cloudflared for GitHub webhook delivery
 ```
 

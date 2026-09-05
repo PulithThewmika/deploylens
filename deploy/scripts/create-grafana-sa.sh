@@ -3,7 +3,7 @@
 # shell backend's panel proxy (E11-T2/T3).
 #
 # Creates (or reuses) a Viewer-role service account named
-# "deploylens-shell-proxy", mints a token for it, and writes
+# "kubex-shell-proxy", mints a token for it, and writes
 # GRAFANA_SERVICE_ACCOUNT_TOKEN into .env. Idempotent: re-running it
 # reuses the existing service account and skips minting a new token if
 # one already exists (Grafana never returns a token's secret value
@@ -28,7 +28,7 @@ GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
 GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-kubex}"
 ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
-SA_NAME="deploylens-shell-proxy"
+SA_NAME="kubex-shell-proxy"
 
 auth=("-u" "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}")
 
