@@ -2,7 +2,7 @@
 # Tells Grafana to load JSON dashboards from this directory
 apiVersion: 1
 providers:
-  - name: deploylens
+  - name: kubex
     type: file
     disableDeletion: false
     updateIntervalSeconds: 30
