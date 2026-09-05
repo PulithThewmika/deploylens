@@ -50,6 +50,18 @@ BEGIN
         PRIMARY KEY (user_id, org_id)
     );
 
+    -- ── api_keys ────────────────────────────────────────────────────────────
+    -- token_hash stores a bcrypt hash — the raw token is shown once on
+    -- creation and never persisted.
+    CREATE TABLE IF NOT EXISTS api_keys (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        name        TEXT NOT NULL,
+        token_hash  TEXT NOT NULL,
+        last_used   TIMESTAMPTZ,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     INSERT INTO schema_versions (version, description)
     VALUES ('V012', 'Auth tables: organizations, users, org_memberships, api_keys');
 END $$;
