@@ -1,4 +1,4 @@
-# deploylens
+# KubeX
 Deployment-aware observability platform — correlates GitHub Actions, ArgoCD, and Kubernetes health per deployment, scores every release autonomously, and exposes the full surface through an MCP interface.
 
 ## Development
@@ -20,7 +20,7 @@ All common workflow commands are wrapped in the top-level `Makefile`. Run `make 
 | `make up` | Start the compose stack (postgres, ingest, grafana) |
 | `make down` | Stop the compose stack |
 | `make logs` | Tail docker-compose logs |
-| `make db-shell` | Open `psql` into the `deploylens` database |
+| `make db-shell` | Open `psql` into the `kubex` database |
 | `make migrate` | Run SQL migrations against local Postgres |
 
 ### Cluster Port-Forwards
