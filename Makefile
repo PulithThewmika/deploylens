@@ -20,10 +20,10 @@ help:
 
 # --- Kind Cluster ---
 cluster-up:
-	kind create cluster --name deploylens --config deploy/kind-config.yaml
+	kind create cluster --name kubex --config deploy/kind-config.yaml
 
 cluster-down:
-	kind delete cluster --name deploylens
+	kind delete cluster --name kubex
 
 cluster-status:
 	kubectl cluster-info
