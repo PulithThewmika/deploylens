@@ -1,9 +1,9 @@
 apiVersion: v2
-name: deploylens-agent
+name: kubex-agent
 description: >-
-  Customer-side data-shipping agents for DeployLens — ships container logs
+  Customer-side data-shipping agents for KubeX — ships container logs
   (Fluent-Bit) and metrics (a bundled agent-mode Prometheus) from any
-  Kubernetes cluster to a central DeployLens platform, with no dependency
+  Kubernetes cluster to a central KubeX platform, with no dependency
   on the Prometheus Operator or any other pre-installed CRDs.
 type: application
 version: 0.1.0

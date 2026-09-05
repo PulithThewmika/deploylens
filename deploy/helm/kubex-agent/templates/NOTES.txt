@@ -32,11 +32,11 @@ ServiceMonitor or Prometheus Operator required:
 ── Webhook tokens ───────────────────────────────────────────────────
 
 GitHub/ArgoCD/Alertmanager webhook tokens are stored in the
-"{{ include "deploylens-agent.fullname" (dict "root" . "component" "webhook-tokens") }}"
+"{{ include "kubex-agent.fullname" (dict "root" . "component" "webhook-tokens") }}"
 Secret. Reference them from your ArgoCD Notifications config or CI
 pipeline with a secretKeyRef instead of hardcoding them:
      secretKeyRef:
-       name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "webhook-tokens") }}
+       name: {{ include "kubex-agent.fullname" (dict "root" . "component" "webhook-tokens") }}
        key: argocd-webhook-token   # or github-webhook-token / alertmanager-webhook-token
 
 ── Blast radius (optional) ──────────────────────────────────────────
@@ -45,16 +45,16 @@ pipeline with a secretKeyRef instead of hardcoding them:
 Blast-radius RBAC is enabled — a read-only ServiceAccount/ClusterRole
 (get/list/watch on Services and Deployments only) for service-dependency
 discovery is installed
-({{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius") }}).
+({{ include "kubex-agent.fullname" (dict "root" . "component" "blast-radius") }}).
 
 The central detection agent runs outside this cluster and needs this
 ServiceAccount's token to authenticate. Extract it from the Secret this
 chart created:
      kubectl get secret -n {{ .Release.Namespace }} \
-       {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
+       {{ include "kubex-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
        -o jsonpath='{.data.token}' | base64 -d
      kubectl get secret -n {{ .Release.Namespace }} \
-       {{ include "deploylens-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
+       {{ include "kubex-agent.fullname" (dict "root" . "component" "blast-radius-token") }} \
        -o jsonpath='{.data.ca\.crt}'
    Then set K8S_API_SERVER / K8S_TOKEN / K8S_CA_CERT_B64 wherever the
    central agent runs (see deploy/scripts/create-blast-radius-sa.sh for
