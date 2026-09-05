@@ -60,7 +60,7 @@ const TOOL_COUNT = 11;
 // for why this is a factory rather than a module-level singleton.
 function createMcpServer(): McpServer {
   const server = new McpServer({
-    name: "deploylens",
+    name: "kubex",
     version: "0.1.0",
   });
 

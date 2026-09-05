@@ -13,7 +13,7 @@ const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   id: 5,
   service_id: 1,
   service_name: "orders",
-  namespace: "deploylens",
+  namespace: "kubex",
   repo: "org/orders",
   argocd_app: "orders",
   commit_sha: "abc123",
@@ -53,7 +53,7 @@ describe("getDeployment", () => {
     expect(parsed.deployment).toMatchObject({
       id: 5,
       service: "orders",
-      namespace: "deploylens",
+      namespace: "kubex",
       status: "deployed",
     });
     expect(parsed.health).toMatchObject({ score: 92, verdict: "healthy" });

@@ -19,7 +19,7 @@ const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   id: 1,
   service_id: 1,
   service_name: "orders",
-  namespace: "deploylens",
+  namespace: "kubex",
   status: "deployed",
   finished_at: new Date("2026-08-29T10:00:00Z"),
   commit_sha: "abc123",
