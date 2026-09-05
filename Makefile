@@ -80,8 +80,8 @@ tunnel:
 
 webhook-update:
 	@NGROK_URL=$$(curl -s http://localhost:4040/api/tunnels | python -c "import sys,json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])") && \
-	HOOK_ID=$$(gh api repos/PulithThewmika/deploylens/hooks --jq '.[0].id') && \
-	gh api repos/PulithThewmika/deploylens/hooks/$$HOOK_ID --method PATCH \
+	HOOK_ID=$$(gh api repos/PulithThewmika/deploylens-sample-app/hooks --jq '.[0].id') && \
+	gh api repos/PulithThewmika/deploylens-sample-app/hooks/$$HOOK_ID --method PATCH \
 		-f "config[url]=$$NGROK_URL/webhooks/github" \
 		-f "config[content_type]=json" \
 		-f "config[secret]=$$(grep GITHUB_WEBHOOK_SECRET .env | cut -d= -f2-)" \
