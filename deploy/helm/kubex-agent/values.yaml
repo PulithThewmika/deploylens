@@ -1,8 +1,8 @@
-# Default values for deploylens-agent.
+# Default values for kubex-agent.
 # Override any of these with `helm install -f my-values.yaml` or `--set`.
 
 # ── Central platform endpoints ───────────────────────────────────────
-# The central DeployLens platform this cluster's data gets shipped to.
+# The central KubeX platform this cluster's data gets shipped to.
 ingest:
   # Base URL of the central ingest service (used for reference/NOTES.txt
   # only — this chart doesn't call it directly, ArgoCD/CI on this cluster
@@ -46,7 +46,7 @@ fluentBit:
 # ── Webhook credentials ──────────────────────────────────────────────
 # Shared secrets this cluster's GitHub Actions / ArgoCD Notifications need
 # to authenticate to the central ingest service's webhook endpoints.
-# Stored in a single Secret (deploylens-agent-webhook-tokens) — see
+# Stored in a single Secret (<release-name>-webhook-tokens) — see
 # NOTES.txt for how to reference it when wiring up ArgoCD Notifications.
 webhookTokens:
   github: ""

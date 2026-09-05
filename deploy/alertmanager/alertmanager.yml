@@ -1,4 +1,4 @@
-# Alertmanager configuration for DeployLens.
+# Alertmanager configuration for KubeX.
 #
 # This config is applied via the kube-prometheus-stack Helm chart
 # (deploy/helm-values/kube-prometheus-stack.yaml, alertmanager.config block).
@@ -8,7 +8,7 @@
 # (alertmanager-slack-secret.yaml) mounted into Alertmanager by the Helm chart.
 
 global:
-  slack_api_url_file: /etc/alertmanager/secrets/deploylens-alertmanager-slack/url
+  slack_api_url_file: /etc/alertmanager/secrets/kubex-alertmanager-slack/url
 
 route:
   receiver: "null"
@@ -19,12 +19,12 @@ route:
   routes:
     - match:
         alertname: DeployDegradation
-      receiver: slack-deploylens
+      receiver: slack-kubex
       continue: false
 
 receivers:
   - name: "null"
-  - name: slack-deploylens
+  - name: slack-kubex
     slack_configs:
       - channel: "#deploylens-alerts"
         send_resolved: true
@@ -43,4 +43,4 @@ receivers:
         http_config:
           authorization:
             type: Bearer
-            credentials_file: /etc/alertmanager/secrets/deploylens-alertmanager-webhook/token
+            credentials_file: /etc/alertmanager/secrets/kubex-alertmanager-webhook/token

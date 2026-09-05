@@ -1,8 +1,8 @@
 # Exposes the central platform's Prometheus and Loki (running in the
-# `deploylens` Kind cluster, namespace `monitoring`) as NodePort Services
+# `kubex` Kind cluster, namespace `monitoring`) as NodePort Services
 # so a *separate* Kind cluster on the same Docker network can reach them.
 #
-# This exists only for local validation (E15-T2) of the deploylens-agent
+# This exists only for local validation (E15-T2) of the kubex-agent
 # chart against a genuinely fresh cluster. A real deployment ships to a
 # central platform with a routable endpoint (LoadBalancer/Ingress) and
 # doesn't need this — it's a stand-in for "the central platform is
@@ -20,8 +20,8 @@
 # from a shared network, and delete it immediately after validation (see
 # README.md's Cleanup section) rather than leaving it running.
 #
-# Apply against the `deploylens` (central) cluster:
-#   kubectl --context kind-deploylens apply -f central-platform-nodeports.yaml
+# Apply against the `kubex` (central) cluster:
+#   kubectl --context kind-kubex apply -f central-platform-nodeports.yaml
 apiVersion: v1
 kind: Service
 metadata:

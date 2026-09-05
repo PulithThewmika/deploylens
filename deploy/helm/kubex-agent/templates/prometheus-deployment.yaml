@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+  name: {{ include "kubex-agent.fullname" (dict "root" . "component" "prometheus") }}
   labels:
-    {{- include "deploylens-agent.labels" . | nindent 4 }}
-    {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 4 }}
+    {{- include "kubex-agent.labels" . | nindent 4 }}
+    {{- include "kubex-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 6 }}
+      {{- include "kubex-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "deploylens-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 8 }}
+        {{- include "kubex-agent.selectorLabels" (dict "root" . "component" "prometheus") | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+      serviceAccountName: {{ include "kubex-agent.fullname" (dict "root" . "component" "prometheus") }}
       containers:
         - name: prometheus
           image: "{{ .Values.prometheus.image.repository }}:{{ .Values.prometheus.image.tag }}"
@@ -44,6 +44,6 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "deploylens-agent.fullname" (dict "root" . "component" "prometheus") }}
+            name: {{ include "kubex-agent.fullname" (dict "root" . "component" "prometheus") }}
         - name: storage
           emptyDir: {}

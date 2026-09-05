@@ -1,10 +1,10 @@
-# Helm values for kube-prometheus-stack in the DeployLens Kind cluster.
+# Helm values for kube-prometheus-stack in the KubeX Kind cluster.
 # Install:
 #   helm install kps prometheus-community/kube-prometheus-stack \
 #     -n monitoring --create-namespace \
 #     -f deploy/helm-values/kube-prometheus-stack.yaml
 #
-# Grafana is disabled — DeployLens runs its own provisioned Grafana
+# Grafana is disabled — KubeX runs its own provisioned Grafana
 # via docker-compose (deploy/docker-compose.yml), which connects to
 # this Prometheus through a port-forward.
 
@@ -19,7 +19,7 @@ prometheus:
     retention: 7d
 
     # This Prometheus doubles as the "central platform" Prometheus that
-    # customer-side deploylens-agent Helm charts (deploy/helm/deploylens-agent)
+    # customer-side kubex-agent Helm charts (deploy/helm/kubex-agent)
     # remote_write to (E15-T2 validation). Needs the receiver enabled to
     # accept those writes.
     enableRemoteWriteReceiver: true
@@ -49,8 +49,8 @@ alertmanager:
   enabled: true
   alertmanagerSpec:
     secrets:
-      - deploylens-alertmanager-slack
-      - deploylens-alertmanager-webhook
+      - kubex-alertmanager-slack
+      - kubex-alertmanager-webhook
     resources:
       requests:
         cpu: 50m
@@ -59,7 +59,7 @@ alertmanager:
         memory: 128Mi
   config:
     global:
-      slack_api_url_file: /etc/alertmanager/secrets/deploylens-alertmanager-slack/url
+      slack_api_url_file: /etc/alertmanager/secrets/kubex-alertmanager-slack/url
     route:
       receiver: "null"
       group_by: ["alertname", "service"]
@@ -69,11 +69,11 @@ alertmanager:
       routes:
         - match:
             alertname: DeployDegradation
-          receiver: slack-deploylens
+          receiver: slack-kubex
           continue: false
     receivers:
       - name: "null"
-      - name: slack-deploylens
+      - name: slack-kubex
         slack_configs:
           - channel: "#deploylens-alerts"
             send_resolved: true
@@ -92,7 +92,7 @@ alertmanager:
             http_config:
               authorization:
                 type: Bearer
-                credentials_file: /etc/alertmanager/secrets/deploylens-alertmanager-webhook/token
+                credentials_file: /etc/alertmanager/secrets/kubex-alertmanager-webhook/token
 
 # ── kube-state-metrics (Kubernetes object metrics) ───────────────────
 kubeStateMetrics:

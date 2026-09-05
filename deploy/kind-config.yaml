@@ -1,4 +1,4 @@
-# Kind cluster configuration for DeployLens
+# Kind cluster configuration for KubeX
 # Creates a single control-plane node with port mappings
 # so services inside the cluster are reachable from localhost.
 kind: Cluster

@@ -1,17 +1,17 @@
 # Read-only ServiceAccount for the detection agent's blast-radius discovery
-# job (E14-T3). Applied directly to the DeployLens Kind cluster (the same
+# job (E14-T3). Applied directly to the KubeX Kind cluster (the same
 # cluster the sample app runs in) — distinct from
-# deploy/helm/deploylens-agent/templates/blast-radius-rbac.yaml, which is the
+# deploy/helm/kubex-agent/templates/blast-radius-rbac.yaml, which is the
 # customer-side chart's equivalent for a *different*, external cluster.
 #
 # Apply:
-#   kubectl --context kind-deploylens apply -f deploy/k8s/blast-radius-rbac.yaml
+#   kubectl --context kind-kubex apply -f deploy/k8s/blast-radius-rbac.yaml
 # Then mint a token with deploy/scripts/create-blast-radius-sa.sh (writes
 # K8S_API_SERVER / K8S_TOKEN / K8S_CA_CERT into .env for the agent).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: deploylens-blast-radius
+  name: kubex-blast-radius
   namespace: default
 ---
 # Long-lived token Secret (the legacy auto-mounted-token mechanism, created
@@ -22,16 +22,16 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: deploylens-blast-radius-token
+  name: kubex-blast-radius-token
   namespace: default
   annotations:
-    kubernetes.io/service-account.name: deploylens-blast-radius
+    kubernetes.io/service-account.name: kubex-blast-radius
 type: kubernetes.io/service-account-token
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: deploylens-blast-radius
+  name: kubex-blast-radius
 rules:
   # Read-only, matching exactly what agent/blast_radius.py queries: the
   # list of Services (to know valid in-cluster DNS names) and Deployments
@@ -48,12 +48,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: deploylens-blast-radius
+  name: kubex-blast-radius
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: deploylens-blast-radius
+  name: kubex-blast-radius
 subjects:
   - kind: ServiceAccount
-    name: deploylens-blast-radius
+    name: kubex-blast-radius
     namespace: default

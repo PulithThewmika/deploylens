@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # create-blast-radius-sa.sh — provision the read-only ServiceAccount the
 # detection agent's blast-radius discovery job (E14-T3) uses to query the
-# Kubernetes API of the DeployLens Kind cluster from outside it (the agent
+# Kubernetes API of the KubeX Kind cluster from outside it (the agent
 # runs in docker-compose, not in-cluster).
 #
 # Applies deploy/k8s/blast-radius-rbac.yaml (idempotent) and writes
@@ -17,7 +17,7 @@
 #   deploy/scripts/create-blast-radius-sa.sh
 #
 # Env vars (optional):
-#   KUBE_CONTEXT   default kind-deploylens
+#   KUBE_CONTEXT   default kind-kubex
 #   ENV_FILE       default .env (repo root)
 
 set -euo pipefail
@@ -25,7 +25,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-kind-deploylens}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-kind-kubex}"
 ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
 
 echo "Applying blast-radius RBAC to context ${KUBE_CONTEXT} ..."
@@ -33,7 +33,7 @@ kubectl --context "${KUBE_CONTEXT}" apply -f "$REPO_ROOT/deploy/k8s/blast-radius
 
 echo "Waiting for the token Secret to populate ..."
 for _ in $(seq 1 15); do
-  token=$(kubectl --context "${KUBE_CONTEXT}" -n default get secret deploylens-blast-radius-token -o jsonpath='{.data.token}' 2>/dev/null || true)
+  token=$(kubectl --context "${KUBE_CONTEXT}" -n default get secret kubex-blast-radius-token -o jsonpath='{.data.token}' 2>/dev/null || true)
   [ -n "$token" ] && break
   sleep 1
 done
@@ -43,7 +43,7 @@ if [ -z "$token" ]; then
 fi
 token=$(echo "$token" | base64 -d)
 
-ca_cert_b64=$(kubectl --context "${KUBE_CONTEXT}" -n default get secret deploylens-blast-radius-token -o jsonpath='{.data.ca\.crt}')
+ca_cert_b64=$(kubectl --context "${KUBE_CONTEXT}" -n default get secret kubex-blast-radius-token -o jsonpath='{.data.ca\.crt}')
 
 # The API server address in kubeconfig (127.0.0.1:<port>) is only reachable
 # from the host, not from inside a docker-compose container. Docker Desktop
