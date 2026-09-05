@@ -18,6 +18,10 @@ spike in payments alone still surfaces undiluted in the aggregate. This
 script therefore queries the ingest API by service="sample-app", while
 still editing only the payments deployment manifest to inject the fault.
 
+Since EPIC-018, the sample app's manifests live in a sibling checkout of
+PulithThewmika/deploylens-sample-app (not this repo) — pass its path via
+--sample-app-repo, or set SAMPLE_APP_REPO, if it isn't a sibling of this repo.
+
 Prerequisites (not managed by this script):
   - The Kind cluster and docker-compose stack are up (`make cluster-up`,
     `make up`) with the sample app, ArgoCD, Prometheus and Alertmanager
@@ -51,6 +55,7 @@ Ctrl-C — so the cluster isn't left in a degraded demo state.
 Usage:
     python scripts/e2e_smoke_test.py
     python scripts/e2e_smoke_test.py --ingest-url http://localhost:8000
+    python scripts/e2e_smoke_test.py --sample-app-repo ../deploylens-sample-app
     python scripts/e2e_smoke_test.py --skip-trigger   # poll an already-triggered deploy
 """
 
@@ -58,6 +63,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -67,7 +73,7 @@ import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = REPO_ROOT / "sample-app" / "deploy" / "payments" / "deployment.yaml"
+DEFAULT_SAMPLE_APP_REPO = REPO_ROOT.parent / "deploylens-sample-app"
 COMPONENT = "payments"  # the manifest/Prometheus label whose chaos flag we set
 SERVICE = "sample-app"  # the ingest-registered service that deployment rolls up under
 ERROR_RATE_FIELD_RE = re.compile(r'(- name: ERROR_RATE\s*\n\s*value: )"[^"]*"')
@@ -82,34 +88,35 @@ def http_get(url: str):
         return json.loads(resp.read())
 
 
-def run(cmd: list[str]) -> str:
-    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+def run(cmd: list[str], cwd: Path) -> str:
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"command failed: {' '.join(cmd)}\n{result.stderr}")
     return result.stdout.strip()
 
 
-def set_error_rate(value: str) -> str | None:
+def set_error_rate(value: str, sample_app_repo: Path) -> str | None:
     """Rewrite ERROR_RATE in the payments deployment manifest and push it.
 
     Returns the new commit SHA, or None if the value was already set (so
     there was nothing to commit).
     """
-    original = MANIFEST.read_text()
+    manifest = sample_app_repo / "deploy" / "payments" / "deployment.yaml"
+    original = manifest.read_text()
     updated, count = ERROR_RATE_FIELD_RE.subn(rf'\1"{value}"', original)
     if count != 1:
         raise RuntimeError(
-            f"expected exactly one ERROR_RATE field in {MANIFEST}, found {count}"
+            f"expected exactly one ERROR_RATE field in {manifest}, found {count}"
         )
     if updated == original:
         log(f"ERROR_RATE already {value!r} — nothing to commit")
         return None
 
-    MANIFEST.write_text(updated)
-    run(["git", "add", str(MANIFEST)])
-    run(["git", "commit", "-m", f"chore(e2e): set payments ERROR_RATE={value} for smoke test"])
-    run(["git", "push", "origin", "HEAD:dev"])
-    return run(["git", "rev-parse", "HEAD"])
+    manifest.write_text(updated)
+    run(["git", "add", str(manifest)], cwd=sample_app_repo)
+    run(["git", "commit", "-m", f"chore(e2e): set payments ERROR_RATE={value} for smoke test"], cwd=sample_app_repo)
+    run(["git", "push", "origin", "HEAD:dev"], cwd=sample_app_repo)
+    return run(["git", "rev-parse", "HEAD"], cwd=sample_app_repo)
 
 
 def poll(description: str, timeout_s: int, interval_s: int, check):
@@ -148,6 +155,12 @@ def main() -> int:
     )
     parser.add_argument("--ingest-url", default="http://localhost:8000")
     parser.add_argument(
+        "--sample-app-repo",
+        type=Path,
+        default=Path(os.environ.get("SAMPLE_APP_REPO", DEFAULT_SAMPLE_APP_REPO)),
+        help="path to a deploylens-sample-app checkout (default: ../deploylens-sample-app, or $SAMPLE_APP_REPO)",
+    )
+    parser.add_argument(
         "--deploy-timeout", type=int, default=300,
         help="seconds to wait for the new deployment to appear (default 300 = 5m)",
     )
@@ -167,6 +180,11 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    if not args.skip_trigger and not args.sample_app_repo.is_dir():
+        log(f"FAIL — sample app repo not found at {args.sample_app_repo} "
+            f"(pass --sample-app-repo or set SAMPLE_APP_REPO)")
+        return 1
+
     try:
         baseline = http_get(f"{args.ingest_url}/api/deployments?service={SERVICE}&limit=1")
     except urllib.error.URLError as exc:
@@ -178,8 +196,8 @@ def main() -> int:
     pushed_sha = None
     try:
         if not args.skip_trigger:
-            log("Step 1/4: pushing ERROR_RATE=0.3 to sample-app/deploy/payments/deployment.yaml")
-            pushed_sha = set_error_rate("0.3")
+            log(f"Step 1/4: pushing ERROR_RATE=0.3 to {args.sample_app_repo}/deploy/payments/deployment.yaml")
+            pushed_sha = set_error_rate("0.3", args.sample_app_repo)
             log(f"pushed {pushed_sha}")
             nudge_argocd_refresh()
         else:
@@ -232,9 +250,10 @@ def main() -> int:
         if pushed_sha and not args.skip_cleanup:
             log("cleanup: reverting ERROR_RATE back to 0")
             try:
-                set_error_rate("0")
+                set_error_rate("0", args.sample_app_repo)
             except Exception as exc:
-                log(f"cleanup FAILED — manually revert {MANIFEST}: {exc}")
+                log(f"cleanup FAILED — manually revert deploy/payments/deployment.yaml "
+                    f"in {args.sample_app_repo}: {exc}")
 
 
 if __name__ == "__main__":

@@ -29,6 +29,10 @@ ArgoCD Notifications ──────▶ │  Ingest Service │──▶ Post
 
 ## Planned Repository Layout
 
+The sample app (frontend/orders/payments + its K8s manifests and CI) lives
+in a separate repo, [PulithThewmika/deploylens-sample-app](https://github.com/PulithThewmika/deploylens-sample-app)
+(EPIC-018) — not in this monorepo.
+
 ```
 deploy/
   kind-config.yaml            # Kind cluster with extraPortMappings (30080→8080)
@@ -53,11 +57,7 @@ services/
     agent/promql.py           # PromQL query builders
     agent/alerting.py         # Alertmanager client
   mcp-server/                 # MCP server (M3)
-sample-app/
-  frontend/  orders/  payments/   # FastAPI microservices with chaos flags
-  deploy/                     # K8s manifests + ServiceMonitors + loadgen
 web/                          # React unified shell (M3)
-.github/workflows/sample-app.yml
 Makefile
 .env                          # NEVER commit — all credentials live here
 .env.example                  # committed, redacted
