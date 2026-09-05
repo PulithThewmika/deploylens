@@ -152,7 +152,7 @@ Local ports: Grafana 3000, ingest 8000, React shell 5173, Prometheus 9090, Loki 
 ## GitHub Project Board — Reporting Discipline
 
 **Board:** https://github.com/users/PulithThewmika/projects/3 (Project #3, owner `PulithThewmika`)
-**Repo:** `PulithThewmika/deploylens`
+**Repo:** `PulithThewmika/kubex`
 **Columns:** Backlog → Todo → In Progress → In Review → Done
 
 Every work session follows this loop:
@@ -180,7 +180,7 @@ Most M3 tasks are pre-decomposed into numbered sub-issues (`gh issue view <task#
 2. Implement one sub-issue at a time, committing per sub-issue with the commit SHA referenced when closing it (`gh issue close <sub#> --comment "Done in <sha>: ..."`). When sub-issues are genuinely inseparable (e.g. one function can't be split into a partially-working increment), bundle them into one commit and say so explicitly in both the commit message and each sub-issue's closing comment — don't force artificial partial commits.
 3. **Verify claims live, not just by reading code.** Before closing a "Verify:"-type sub-issue or reporting a feature done, actually exercise it: start the real dependency (`docker compose up postgres grafana`, a local `uvicorn`/`vite` process), hit it with curl or a real browser, and read the actual output — a case in this project (E11-T2) where the code looked correct but silently didn't work (Grafana's embedded HTML 404s on all its own assets when proxied) was only caught this way.
 4. Push, open a PR to `dev` (`Closes #<task#>` in the body), then run `/code-review high` on the diff, fix what it finds, push the fixes, and re-run `ReportFindings` with `outcome: fixed` before asking the user to merge.
-5. **Check CodeRabbit's automated review too** (`gh pr view <PR#> --json comments,reviews` or `gh api repos/PulithThewmika/deploylens/pulls/<PR#>/comments`) — it runs on every PR per `.coderabbit.yaml` and catches issues `/code-review` may not (path-specific instructions, pre-merge checks, docstring coverage). Treat its findings the same as `/code-review`'s: verify against current code, fix genuine issues, push, and note in the PR why any flagged item wasn't addressed. Its pre-merge checks and any unresolved inline comments should be clear (or explicitly dismissed with a reason) before asking the user to merge.
+5. **Check CodeRabbit's automated review too** (`gh pr view <PR#> --json comments,reviews` or `gh api repos/PulithThewmika/kubex/pulls/<PR#>/comments`) — it runs on every PR per `.coderabbit.yaml` and catches issues `/code-review` may not (path-specific instructions, pre-merge checks, docstring coverage). Treat its findings the same as `/code-review`'s: verify against current code, fix genuine issues, push, and note in the PR why any flagged item wasn't addressed. Its pre-merge checks and any unresolved inline comments should be clear (or explicitly dismissed with a reason) before asking the user to merge.
 6. After merge: close the task issue if `Closes #N` didn't already auto-close it, move its board item to Done, sync local `dev`. When every sibling task under an epic is Done, close the epic issue and move its board item to Done too.
 7. If implementing a task surfaces a real architecture gap or a spec that's internally inconsistent with what's already built (not just a design preference) — ask the user via a direct question rather than silently choosing a workaround; save legitimate but out-of-scope follow-up work as a flagged task (`spawn_task`) instead of expanding the current PR.
 

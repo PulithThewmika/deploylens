@@ -145,7 +145,7 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
-# DeployLens local state
+# KubeX local state
 .pids/
 
 # Environments
