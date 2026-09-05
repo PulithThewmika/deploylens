@@ -38,6 +38,18 @@ BEGIN
         created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- ── org_memberships ─────────────────────────────────────────────────────
+    -- Composite PK: a user belongs to an org at most once. First user for an
+    -- org is 'owner', subsequent joins are 'member' (enforced in app code,
+    -- not here).
+    CREATE TABLE IF NOT EXISTS org_memberships (
+        user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        org_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        role       TEXT NOT NULL CHECK (role IN ('owner', 'member')),
+        joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (user_id, org_id)
+    );
+
     INSERT INTO schema_versions (version, description)
     VALUES ('V012', 'Auth tables: organizations, users, org_memberships, api_keys');
 END $$;
