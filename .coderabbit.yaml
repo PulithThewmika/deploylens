@@ -92,17 +92,17 @@ reviews:
         dora_change_failure_rate, dora_mttr) that duplicates their logic
         instead of reading from them.
 
-tools:
-  ruff:
-    enabled: true
-  eslint:
-    enabled: true
-  markdownlint:
-    enabled: true
-  yamllint:
-    enabled: true
-  gitleaks:
-    enabled: true            # catches accidental .env / secret commits
+  tools:
+    ruff:
+      enabled: true
+    eslint:
+      enabled: true
+    markdownlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    gitleaks:
+      enabled: true            # catches accidental .env / secret commits
 
 chat:
   auto_reply: true
