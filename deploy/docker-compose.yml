@@ -1,21 +1,21 @@
 services:
   # ── PostgreSQL 16 ──────────────────────────────────────────────
-  # The central database — every DeployLens component reads/writes here.
-  # Creates the "deploylens" database automatically on first start.
+  # The central database — every KubeX component reads/writes here.
+  # Creates the "kubex" database automatically on first start.
   postgres:
     image: postgres:16
-    container_name: deploylens-postgres
+    container_name: kubex-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: deploylens
-      POSTGRES_USER: deploylens
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deploylens}
+      POSTGRES_DB: kubex
+      POSTGRES_USER: kubex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kubex}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U deploylens -d deploylens"]
+      test: ["CMD-SHELL", "pg_isready -U kubex -d kubex"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -28,14 +28,14 @@ services:
     build:
       context: ../services/ingest
       dockerfile: Dockerfile
-    container_name: deploylens-ingest
+    container_name: kubex-ingest
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
       - ../.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      DATABASE_URL: postgresql+asyncpg://kubex:${POSTGRES_PASSWORD:-kubex}@postgres:5432/kubex
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       OBSERVATION_WINDOW: ${OBSERVATION_WINDOW:-15m}
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
@@ -59,12 +59,12 @@ services:
     build:
       context: ../services/agent
       dockerfile: Dockerfile
-    container_name: deploylens-agent
+    container_name: kubex-agent
     restart: unless-stopped
     env_file:
       - ../.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      DATABASE_URL: postgresql+asyncpg://kubex:${POSTGRES_PASSWORD:-kubex}@postgres:5432/kubex
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       ALERTMANAGER_URL: ${ALERTMANAGER_URL:-http://host.docker.internal:9093}
       BASELINE_WINDOW: ${BASELINE_WINDOW:-30m}
@@ -80,10 +80,10 @@ services:
     build:
       context: ../services/mcp-server
       dockerfile: Dockerfile
-    container_name: deploylens-mcp
+    container_name: kubex-mcp
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://deploylens:${POSTGRES_PASSWORD:-deploylens}@postgres:5432/deploylens
+      DATABASE_URL: postgresql://kubex:${POSTGRES_PASSWORD:-kubex}@postgres:5432/kubex
       PROM_URL: ${PROM_URL:-http://host.docker.internal:9090}
       LOKI_URL: ${LOKI_URL:-http://host.docker.internal:3100}
       MCP_TRANSPORT: http
@@ -98,13 +98,13 @@ services:
   # Embedding enabled for the React shell iframe integration.
   grafana:
     image: grafana/grafana:11.6.0
-    container_name: deploylens-grafana
+    container_name: kubex-grafana
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-deploylens}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-kubex}
       GF_SECURITY_ALLOW_EMBEDDING: "true"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_SECURITY_COOKIE_SAMESITE: lax
