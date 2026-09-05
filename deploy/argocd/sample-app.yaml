@@ -4,9 +4,9 @@ metadata:
   name: sample-app
   namespace: argocd
   annotations:
-    notifications.argoproj.io/subscribe.on-sync-running.deploylens: ""
-    notifications.argoproj.io/subscribe.on-sync-succeeded.deploylens: ""
-    notifications.argoproj.io/subscribe.on-sync-failed.deploylens: ""
+    notifications.argoproj.io/subscribe.on-sync-running.kubex: ""
+    notifications.argoproj.io/subscribe.on-sync-succeeded.kubex: ""
+    notifications.argoproj.io/subscribe.on-sync-failed.kubex: ""
 spec:
   project: default
   source:
@@ -17,7 +17,7 @@ spec:
       recurse: true
   destination:
     server: https://kubernetes.default.svc
-    namespace: deploylens
+    namespace: kubex
   syncPolicy:
     automated:
       prune: true

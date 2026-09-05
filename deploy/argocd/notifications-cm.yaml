@@ -4,17 +4,17 @@ metadata:
   name: argocd-notifications-cm
   namespace: argocd
 data:
-  service.webhook.deploylens: |
+  service.webhook.kubex: |
     url: http://host.docker.internal:8000/webhooks/argocd
     headers:
       - name: Authorization
-        value: Bearer $deploylens-token
+        value: Bearer $kubex-token
       - name: Content-Type
         value: application/json
 
-  template.deploylens-on-sync-running: |
+  template.kubex-on-sync-running: |
     webhook:
-      deploylens:
+      kubex:
         method: POST
         body: |
           {
@@ -45,9 +45,9 @@ data:
             }
           }
 
-  template.deploylens-on-sync-succeeded: |
+  template.kubex-on-sync-succeeded: |
     webhook:
-      deploylens:
+      kubex:
         method: POST
         body: |
           {
@@ -78,9 +78,9 @@ data:
             }
           }
 
-  template.deploylens-on-sync-failed: |
+  template.kubex-on-sync-failed: |
     webhook:
-      deploylens:
+      kubex:
         method: POST
         body: |
           {
@@ -113,12 +113,12 @@ data:
 
   trigger.on-sync-running: |
     - when: app.status.operationState.phase in ['Running']
-      send: [deploylens-on-sync-running]
+      send: [kubex-on-sync-running]
 
   trigger.on-sync-succeeded: |
     - when: app.status.operationState.phase in ['Succeeded']
-      send: [deploylens-on-sync-succeeded]
+      send: [kubex-on-sync-succeeded]
 
   trigger.on-sync-failed: |
     - when: app.status.operationState.phase in ['Failed', 'Error']
-      send: [deploylens-on-sync-failed]
+      send: [kubex-on-sync-failed]
