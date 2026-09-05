@@ -14,7 +14,7 @@ def _parse_duration(value: str) -> int:
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://deploylens:deploylens@localhost:5432/deploylens",
+    "postgresql+asyncpg://kubex:kubex@localhost:5432/kubex",
 )
 
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")

@@ -2,14 +2,14 @@
         forwards forwards-stop argocd-forward tunnel webhook-update e2e
 
 help:
-	@echo "DeployLens dev workflow targets:"
+	@echo "KubeX dev workflow targets:"
 	@echo "  cluster-up       Create the Kind cluster from deploy/kind-config.yaml"
 	@echo "  cluster-down     Delete the Kind cluster"
 	@echo "  cluster-status   Show cluster info and node list"
 	@echo "  up               Start docker-compose stack (postgres, ingest, grafana)"
 	@echo "  down             Stop docker-compose stack"
 	@echo "  logs             Tail docker-compose logs"
-	@echo "  db-shell         Open psql into the deploylens database"
+	@echo "  db-shell         Open psql into the kubex database"
 	@echo "  migrate          Run SQL migrations against local Postgres"
 	@echo "  forwards         Start port-forwards for Prometheus, Loki, Alertmanager"
 	@echo "  forwards-stop    Stop tracked port-forward processes"
@@ -40,11 +40,12 @@ logs:
 	docker compose -f deploy/docker-compose.yml logs -f
 
 db-shell:
-	docker compose -f deploy/docker-compose.yml exec postgres psql -U deploylens -d deploylens
+	docker compose -f deploy/docker-compose.yml exec postgres psql -U kubex -d kubex
 
 # --- Migrations ---
 migrate:
-	python services/ingest/migrations/run.py --url "postgresql://deploylens:deploylens@localhost:5432/deploylens"
+	set -a; [ -f ./.env ] && . ./.env; set +a; \
+	python services/ingest/migrations/run.py --url "postgresql://kubex:$${POSTGRES_PASSWORD:-kubex}@localhost:5432/kubex"
 
 # --- Cluster Port-Forwards (background, PIDs tracked in .pids) ---
 forwards:

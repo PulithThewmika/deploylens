@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import (
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+asyncpg://deploylens:deploylens@localhost:5432/deploylens",
+    "postgresql+asyncpg://kubex:kubex@localhost:5432/kubex",
 )
 
 engine = create_async_engine(DATABASE_URL, echo=False)

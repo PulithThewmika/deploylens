@@ -32,7 +32,7 @@ datasources:
     user: grafana_ro
     editable: false
     jsonData:
-      database: deploylens
+      database: kubex
       sslmode: disable
       maxOpenConns: 5
       maxIdleConns: 2
