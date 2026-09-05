@@ -39,7 +39,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("deploylens.agent")
+logger = logging.getLogger("kubex.agent")
 
 _shutdown_event = asyncio.Event()
 
@@ -223,7 +223,7 @@ async def shutdown(scheduler: AsyncIOScheduler) -> None:
 
 
 async def main() -> None:
-    logger.info("DeployLens Detection Agent starting")
+    logger.info("KubeX Detection Agent starting")
     logger.info("Loop interval: %ds", AGENT_INTERVAL_SECONDS)
 
     await verify_connections()

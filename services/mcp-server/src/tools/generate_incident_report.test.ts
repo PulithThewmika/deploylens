@@ -38,7 +38,7 @@ const makeRow = (overrides: Partial<Record<string, unknown>> = {}) => ({
   deploy_finished_at: new Date("2026-08-29T10:05:00Z"),
   image_tag: "abc1234",
   service_name: "orders",
-  namespace: "deploylens",
+  namespace: "kubex",
   prom_components: null,
   score: 35,
   verdict: "failed",

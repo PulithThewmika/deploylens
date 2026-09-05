@@ -18,7 +18,7 @@ from .chat_prompt import SYSTEM_PROMPT
 from .mcp_client import mcp_session
 from .schemas.chat import ChatMessage
 
-logger = logging.getLogger("deploylens.ingest.chat_engine")
+logger = logging.getLogger("kubex.ingest.chat_engine")
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "claude-sonnet-5")

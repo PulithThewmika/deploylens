@@ -14,7 +14,7 @@ from datetime import datetime
 
 import httpx
 
-logger = logging.getLogger("deploylens.ingest.promql")
+logger = logging.getLogger("kubex.ingest.promql")
 
 PROM_URL = os.environ.get("PROM_URL", "http://localhost:9090")
 OBSERVATION_WINDOW = os.environ.get("OBSERVATION_WINDOW", "15m")

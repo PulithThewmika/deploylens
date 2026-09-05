@@ -19,7 +19,7 @@ from ..models.pipeline_event import PipelineEvent
 from ..models.safety_score import SafetyScore
 from ..safety_score import compute_safety_score
 
-logger = logging.getLogger("deploylens.webhooks.github")
+logger = logging.getLogger("kubex.webhooks.github")
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 

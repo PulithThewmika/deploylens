@@ -49,7 +49,7 @@ describe('Overview page', () => {
     renderOverview()
 
     expect(await screen.findByText('orders')).toBeInTheDocument()
-    expect(screen.getByText('deploylens')).toBeInTheDocument()
+    expect(screen.getByText('kubex')).toBeInTheDocument()
   })
 
   it('renders a message when the API returns no services', async () => {

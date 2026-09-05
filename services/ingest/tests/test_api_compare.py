@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _mock_deploy_row(id, service_id=1, service_name="orders",
-                     namespace="deploylens", finished_at=None):
+                     namespace="kubex", finished_at=None):
     row = MagicMock()
     row.id = id
     row.service_id = service_id

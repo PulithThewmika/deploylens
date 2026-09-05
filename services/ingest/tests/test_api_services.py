@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 
 
 def _mock_row(
-    id=1, name="orders", namespace="deploylens", repo="org/orders",
+    id=1, name="orders", namespace="kubex", repo="org/orders",
     argocd_app="orders", latest_commit_sha="abc1234",
     latest_author="dev", latest_status="deployed",
     latest_finished_at=None, health_score=95,

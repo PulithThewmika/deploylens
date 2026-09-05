@@ -24,7 +24,7 @@ import httpx
 
 from .config import K8S_API_SERVER, K8S_CA_CERT_B64, K8S_TOKEN
 
-logger = logging.getLogger("deploylens.agent.k8s_client")
+logger = logging.getLogger("kubex.agent.k8s_client")
 
 _client: httpx.AsyncClient | None = None
 

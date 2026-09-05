@@ -16,7 +16,7 @@ def mock_session():
 
 
 def _make_deploy_row(deploy_id=1, service_id=1, service_name="orders",
-                     namespace="deploylens", commit_sha="abc1234",
+                     namespace="kubex", commit_sha="abc1234",
                      prom_components=None):
     row = MagicMock()
     row.id = deploy_id

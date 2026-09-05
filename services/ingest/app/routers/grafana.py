@@ -7,7 +7,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
-logger = logging.getLogger("deploylens.ingest.grafana")
+logger = logging.getLogger("kubex.ingest.grafana")
 
 router = APIRouter(prefix="/api/grafana", tags=["grafana"])
 

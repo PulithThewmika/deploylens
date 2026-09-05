@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger("deploylens.api")
+logger = logging.getLogger("kubex.api")
 
 from ..auth import verify_alertmanager_token
 from ..db import get_session

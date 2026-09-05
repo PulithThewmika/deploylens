@@ -61,7 +61,7 @@ class TestResolveService:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
 
-        service_id = await resolve_service(session, repo="PulithThewmika/deploylens")
+        service_id = await resolve_service(session, repo="PulithThewmika/kubex")
         assert service_id == 42
 
     @pytest.mark.asyncio
@@ -144,9 +144,9 @@ class TestResolveService:
         session.flush = AsyncMock()
         session.add = MagicMock()
 
-        await resolve_service(session, repo="PulithThewmika/deploylens")
+        await resolve_service(session, repo="PulithThewmika/kubex")
         added_service_1 = session.add.call_args_list[0][0][0]
-        assert added_service_1.name == "deploylens"
+        assert added_service_1.name == "kubex"
 
         session.add.reset_mock()
         await resolve_service(session, argocd_app="sample-app")

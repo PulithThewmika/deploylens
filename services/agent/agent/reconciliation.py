@@ -18,7 +18,7 @@ from .alerting import resolve_alert
 from .config import BASELINE_WINDOW, BASELINE_WINDOW_SECONDS, OBSERVATION_WINDOW, OBSERVATION_WINDOW_SECONDS
 from .health_score import compute_health_score, _aggregate_metrics
 
-logger = logging.getLogger("deploylens.agent.reconciliation")
+logger = logging.getLogger("kubex.agent.reconciliation")
 
 HEALTHY_THRESHOLD = 80
 

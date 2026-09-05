@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="DeployLens Ingest",
+    title="KubeX Ingest",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -40,12 +40,12 @@ app.add_middleware(
 
 # Prometheus metrics with required service label (CLAUDE.md Critical Decision #2)
 _requests_counter = Counter(
-    "deploylens_ingest_http_requests_total",
+    "kubex_ingest_http_requests_total",
     "Total HTTP requests",
     ["service", "method", "handler", "status"],
 )
 _duration_histogram = Histogram(
-    "deploylens_ingest_http_request_duration_seconds",
+    "kubex_ingest_http_request_duration_seconds",
     "HTTP request duration in seconds",
     ["service", "method", "handler", "status"],
 )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DeployLens end-to-end smoke test.
+"""KubeX end-to-end smoke test.
 
 Exercises the full deployment pipeline for real, with no mocks: pushes a
 commit that raises the payments component's ERROR_RATE chaos flag, then

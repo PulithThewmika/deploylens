@@ -46,41 +46,41 @@ def _mock_session_with_begin_nested() -> AsyncMock:
 class TestExtractEnvUrlTargets:
     def test_matches_url_env_var_referencing_known_service(self):
         deployment = _deployment("frontend", [{"name": "ORDERS_URL", "value": "http://orders:8000"}])
-        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "kubex")
         assert targets == {"orders"}
 
     def test_ignores_url_not_matching_a_known_service(self):
         deployment = _deployment("frontend", [{"name": "EXTERNAL_URL", "value": "http://example.com"}])
-        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"orders", "payments"}, "kubex")
         assert targets == set()
 
     def test_ignores_non_url_env_vars(self):
         deployment = _deployment("frontend", [{"name": "ERROR_RATE", "value": "0"}])
-        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"orders"}, "kubex")
         assert targets == set()
 
     def test_handles_missing_env_value(self):
         deployment = _deployment("frontend", [{"name": "SOME_VAR"}])
-        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"orders"}, "kubex")
         assert targets == set()
 
     def test_matches_namespace_qualified_url_in_same_namespace(self):
-        deployment = _deployment("frontend", [{"name": "ORDERS_URL", "value": "http://orders.deploylens:8000"}])
-        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        deployment = _deployment("frontend", [{"name": "ORDERS_URL", "value": "http://orders.kubex:8000"}])
+        targets = _extract_env_url_targets(deployment, {"orders"}, "kubex")
         assert targets == {"orders"}
 
     def test_matches_fully_qualified_cluster_local_url(self):
         deployment = _deployment(
-            "frontend", [{"name": "ORDERS_URL", "value": "http://orders.deploylens.svc.cluster.local:8000"}]
+            "frontend", [{"name": "ORDERS_URL", "value": "http://orders.kubex.svc.cluster.local:8000"}]
         )
-        targets = _extract_env_url_targets(deployment, {"orders"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"orders"}, "kubex")
         assert targets == {"orders"}
 
     def test_skips_cross_namespace_reference_rather_than_misattributing(self):
         """A same-named local Service must not be matched for a different namespace's target."""
         deployment = _deployment("frontend", [{"name": "PAYMENTS_URL", "value": "http://payments.billing:8000"}])
         # "payments" exists locally too, but the URL explicitly targets "billing".
-        targets = _extract_env_url_targets(deployment, {"payments"}, "deploylens")
+        targets = _extract_env_url_targets(deployment, {"payments"}, "kubex")
         assert targets == set()
 
 
@@ -106,7 +106,7 @@ class TestDiscoverNamespaceEdges:
 
         with patch("agent.blast_radius.list_services", AsyncMock(return_value=services)), \
              patch("agent.blast_radius.list_deployments", AsyncMock(return_value=deployments)):
-            edges = await discover_namespace_edges("deploylens")
+            edges = await discover_namespace_edges("kubex")
 
         assert set(edges) == {("frontend", "orders"), ("orders", "payments")}
 
@@ -114,7 +114,7 @@ class TestDiscoverNamespaceEdges:
     async def test_skips_deployments_with_no_app_label(self):
         with patch("agent.blast_radius.list_services", AsyncMock(return_value=[_service("orders")])), \
              patch("agent.blast_radius.list_deployments", AsyncMock(return_value=[{"spec": {"template": {"metadata": {"labels": {}}, "spec": {"containers": []}}}}])):
-            edges = await discover_namespace_edges("deploylens")
+            edges = await discover_namespace_edges("kubex")
         assert edges == []
 
     @pytest.mark.asyncio
@@ -122,7 +122,7 @@ class TestDiscoverNamespaceEdges:
         deployments = [_deployment("orders", [{"name": "SELF_URL", "value": "http://orders:8000"}])]
         with patch("agent.blast_radius.list_services", AsyncMock(return_value=[_service("orders")])), \
              patch("agent.blast_radius.list_deployments", AsyncMock(return_value=deployments)):
-            edges = await discover_namespace_edges("deploylens")
+            edges = await discover_namespace_edges("kubex")
         assert edges == []
 
 
@@ -131,11 +131,11 @@ class TestGetMonitoredNamespaces:
     async def test_returns_distinct_namespaces(self):
         session = AsyncMock()
         result = MagicMock()
-        result.fetchall.return_value = [MagicMock(namespace="deploylens")]
+        result.fetchall.return_value = [MagicMock(namespace="kubex")]
         session.execute.return_value = result
 
         namespaces = await get_monitored_namespaces(session)
-        assert namespaces == ["deploylens"]
+        assert namespaces == ["kubex"]
 
 
 class TestRunDiscovery:
@@ -160,7 +160,7 @@ class TestRunDiscovery:
         session.execute = AsyncMock(side_effect=results)
 
         with patch("agent.blast_radius.discover_namespace_edges", AsyncMock(return_value=[("frontend", "orders")])):
-            written = await run_discovery(session, ["deploylens"])
+            written = await run_discovery(session, ["kubex"])
 
         assert written == 1
 
@@ -185,7 +185,7 @@ class TestRunDiscovery:
         session.execute = AsyncMock(side_effect=results)
 
         with patch("agent.blast_radius.discover_namespace_edges", AsyncMock(return_value=[("frontend", "orders")])):
-            written = await run_discovery(session, ["deploylens"])
+            written = await run_discovery(session, ["kubex"])
 
         assert written == 0
 
@@ -196,7 +196,7 @@ class TestRunDiscovery:
         session.execute = AsyncMock(return_value=MagicMock(first=lambda: None))
 
         with patch("agent.blast_radius.discover_namespace_edges", AsyncMock(return_value=[("loadgen", "frontend")])):
-            written = await run_discovery(session, ["deploylens"])
+            written = await run_discovery(session, ["kubex"])
 
         assert written == 0
 
@@ -237,6 +237,6 @@ class TestRunDiscovery:
             "agent.blast_radius.discover_namespace_edges",
             AsyncMock(return_value=[("frontend", "orders"), ("orders", "payments")]),
         ):
-            written = await run_discovery(session, ["deploylens"])
+            written = await run_discovery(session, ["kubex"])
 
         assert written == 1

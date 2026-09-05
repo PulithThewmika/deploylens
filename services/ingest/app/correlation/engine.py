@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.deployment import Deployment
 from ..models.service import Service
 
-logger = logging.getLogger("deploylens.correlation")
+logger = logging.getLogger("kubex.correlation")
 
 
 def utcnow() -> datetime:

@@ -73,7 +73,7 @@ describe('ServiceDeepDive page', () => {
 
     expect(await screen.findByRole('heading', { name: 'orders' })).toBeInTheDocument()
     expect(await screen.findByText('deployed')).toBeInTheDocument()
-    expect(await screen.findByText('deploylens')).toBeInTheDocument()
+    expect(await screen.findByText('kubex')).toBeInTheDocument()
   })
 
   it('renders DORA mini-stats: deploy frequency, lead time, change failure rate, and MTTR', async () => {

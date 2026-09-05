@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from ..chat_engine import ANTHROPIC_API_KEY, list_anthropic_tools, run_chat_turn
 from ..schemas.chat import ChatRequest
 
-logger = logging.getLogger("deploylens.ingest.chat")
+logger = logging.getLogger("kubex.ingest.chat")
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
