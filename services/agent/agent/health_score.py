@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .config import BASELINE_WINDOW, BASELINE_WINDOW_SECONDS, OBSERVATION_WINDOW, OBSERVATION_WINDOW_SECONDS
 from . import promql
 
-logger = logging.getLogger("deploylens.agent.health_score")
+logger = logging.getLogger("kubex.agent.health_score")
 
 WEIGHTS = {
     "error_rate": 45,

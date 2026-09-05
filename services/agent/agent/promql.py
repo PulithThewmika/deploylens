@@ -15,7 +15,7 @@ import httpx
 
 from .config import PROM_URL
 
-logger = logging.getLogger("deploylens.agent.promql")
+logger = logging.getLogger("kubex.agent.promql")
 
 _UNSAFE_LABEL_RE = re.compile(r'[\\"\n\r]')
 

@@ -10,7 +10,7 @@ from agent.reconciliation import reconcile_active_alerts, _recovery_counters
 
 
 def _make_alert_row(alert_id=1, deployment_id=1, service_id=1,
-                    service_name="orders", namespace="deploylens",
+                    service_name="orders", namespace="kubex",
                     prom_components=None):
     row = MagicMock()
     row.id = alert_id

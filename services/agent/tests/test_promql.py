@@ -102,7 +102,7 @@ async def test_query_prometheus_timeout(mock_client, caplog):
     """Prometheus timeout returns None and logs a warning."""
     mock_client.get.side_effect = httpx.TimeoutException("Timed out")
 
-    with caplog.at_level("WARNING", logger="deploylens.agent.promql"):
+    with caplog.at_level("WARNING", logger="kubex.agent.promql"):
         result = await query_prometheus("up", TS)
 
     assert result is None
@@ -114,13 +114,13 @@ async def test_query_error_rate(mock_client):
     """Error rate query constructs correct PromQL and returns float."""
     mock_client.get.return_value = _mock_response(_make_prom_response(0.03))
 
-    result = await query_error_rate("orders", "deploylens", "30m", TS)
+    result = await query_error_rate("orders", "kubex", "30m", TS)
     assert result == pytest.approx(0.03)
 
     call_args = mock_client.get.call_args
     query = call_args.kwargs["params"]["query"]
     assert 'service="orders"' in query
-    assert 'namespace="deploylens"' in query
+    assert 'namespace="kubex"' in query
     assert 'status=~"5.."' in query
     assert "[30m]" in query
 
@@ -130,7 +130,7 @@ async def test_query_latency_p99_converts_to_ms(mock_client):
     """Latency query returns value converted from seconds to milliseconds."""
     mock_client.get.return_value = _mock_response(_make_prom_response(0.25))
 
-    result = await query_latency_p99("orders", "deploylens", "15m", TS)
+    result = await query_latency_p99("orders", "kubex", "15m", TS)
     assert result == pytest.approx(250.0)
 
     call_args = mock_client.get.call_args
@@ -144,7 +144,7 @@ async def test_query_restarts(mock_client):
     """Restart query constructs correct PromQL with container label."""
     mock_client.get.return_value = _mock_response(_make_prom_response(2.0))
 
-    result = await query_restarts("payments", "deploylens", "30m", TS)
+    result = await query_restarts("payments", "kubex", "30m", TS)
     assert result == pytest.approx(2.0)
 
     call_args = mock_client.get.call_args
@@ -178,7 +178,7 @@ async def test_query_error_rate_sanitizes_service(mock_client):
     """Service names with injection characters are escaped in PromQL."""
     mock_client.get.return_value = _mock_response(_make_prom_response(0.01))
 
-    await query_error_rate('x"} or vector(1){a="', "deploylens", "30m", TS)
+    await query_error_rate('x"} or vector(1){a="', "kubex", "30m", TS)
 
     query = mock_client.get.call_args.kwargs["params"]["query"]
     assert 'service="x\\"} or vector(1){a=\\"' in query

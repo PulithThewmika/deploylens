@@ -24,7 +24,7 @@ from sqlalchemy import text
 
 from .k8s_client import list_deployments, list_services
 
-logger = logging.getLogger("deploylens.agent.blast_radius")
+logger = logging.getLogger("kubex.agent.blast_radius")
 
 # Group 1: the bare service name. Group 2: everything after it up to the
 # port/path — either nothing (same-namespace, e.g. "orders"), or a dotted

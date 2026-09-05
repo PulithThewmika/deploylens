@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import ALERTMANAGER_URL
 
-logger = logging.getLogger("deploylens.agent.alerting")
+logger = logging.getLogger("kubex.agent.alerting")
 
 _client: httpx.AsyncClient | None = None
 
