@@ -23,7 +23,7 @@ export function makeService(overrides: Partial<Service> = {}): Service {
   return {
     id: 1,
     name: 'orders',
-    namespace: 'deploylens',
+    namespace: 'kubex',
     repo: 'org/orders',
     argocd_app: 'orders',
     latest_deploy: {
@@ -62,7 +62,7 @@ export function makeDeploymentDetail(overrides: Partial<DeploymentDetail> = {}):
       name: 'orders',
       repo: 'org/orders',
       argocd_app: 'orders',
-      namespace: 'deploylens',
+      namespace: 'kubex',
       created_at: '2026-01-01T00:00:00Z',
     },
     timeline: [],
