@@ -12,8 +12,8 @@ keywords:
   - observability
   - deployment-tracking
   - monitoring
-home: https://github.com/PulithThewmika/deploylens
+home: https://github.com/PulithThewmika/kubex
 sources:
-  - https://github.com/PulithThewmika/deploylens
+  - https://github.com/PulithThewmika/kubex
 maintainers:
   - name: PulithThewmika
