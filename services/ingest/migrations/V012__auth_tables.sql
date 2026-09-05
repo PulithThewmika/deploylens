@@ -26,6 +26,18 @@ BEGIN
         created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    -- ── users ───────────────────────────────────────────────────────────────
+    -- One row per GitHub identity; email nullable since GitHub accounts can
+    -- have no public/verified email even with the user:email scope granted.
+    CREATE TABLE IF NOT EXISTS users (
+        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        github_id   BIGINT NOT NULL UNIQUE,
+        login       TEXT NOT NULL,
+        email       TEXT,
+        avatar_url  TEXT,
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     INSERT INTO schema_versions (version, description)
     VALUES ('V012', 'Auth tables: organizations, users, org_memberships, api_keys');
 END $$;
