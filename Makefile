@@ -44,6 +44,7 @@ db-shell:
 
 # --- Migrations ---
 migrate:
+	set -a; [ -f ./.env ] && . ./.env; set +a; \
 	python services/ingest/migrations/run.py --url "postgresql://kubex:$${POSTGRES_PASSWORD:-kubex}@localhost:5432/kubex"
 
 # --- Cluster Port-Forwards (background, PIDs tracked in .pids) ---
