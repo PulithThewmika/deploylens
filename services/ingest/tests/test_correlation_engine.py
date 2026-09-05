@@ -90,7 +90,7 @@ class TestResolveService:
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
 
-        service_id = await resolve_service(session, repo="PulithThewmika/kubex-sample-app")
+        service_id = await resolve_service(session, repo="PulithThewmika/deploylens-sample-app")
         assert service_id == 31
 
     @pytest.mark.asyncio
