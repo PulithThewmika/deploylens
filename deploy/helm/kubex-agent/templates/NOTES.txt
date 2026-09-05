@@ -1,4 +1,4 @@
-DeployLens agent set installed into namespace "{{ .Release.Namespace }}".
+KubeX agent set installed into namespace "{{ .Release.Namespace }}".
 
 This cluster is now shipping:
   - Logs      -> {{ .Values.loki.host }}:{{ .Values.loki.port }} (via Fluent-Bit)
