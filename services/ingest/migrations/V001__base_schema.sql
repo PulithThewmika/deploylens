@@ -132,13 +132,21 @@ BEGIN
         CREATE ROLE grafana_ro WITH LOGIN PASSWORD 'grafana_readonly';
     END IF;
 
-    GRANT CONNECT ON DATABASE deploylens TO grafana_ro;
+    -- Historical: this originally granted access on the "deploylens"
+    -- database/user (EPIC-025 renamed the DB to "kubex" — see V013,
+    -- which grants the equivalent access there). Guarded so this
+    -- migration still runs cleanly on a fresh, differently-named DB.
+    IF EXISTS (SELECT 1 FROM pg_database WHERE datname = 'deploylens') THEN
+        GRANT CONNECT ON DATABASE deploylens TO grafana_ro;
+    END IF;
     GRANT USAGE ON SCHEMA public TO grafana_ro;
     GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_ro;
 
     -- Future tables created by deploylens user are also readable
-    ALTER DEFAULT PRIVILEGES FOR USER deploylens IN SCHEMA public
-        GRANT SELECT ON TABLES TO grafana_ro;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'deploylens') THEN
+        ALTER DEFAULT PRIVILEGES FOR USER deploylens IN SCHEMA public
+            GRANT SELECT ON TABLES TO grafana_ro;
+    END IF;
 
     -- ── Record migration ────────────────────────────────────────────────────
     INSERT INTO schema_versions (version, description)
