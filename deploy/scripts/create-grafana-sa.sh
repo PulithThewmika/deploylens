@@ -16,7 +16,7 @@
 # Env vars (all optional, matching .env / docker-compose defaults):
 #   GRAFANA_URL             default http://localhost:3000
 #   GRAFANA_ADMIN_USER      default admin
-#   GRAFANA_ADMIN_PASSWORD  default deploylens
+#   GRAFANA_ADMIN_PASSWORD  default kubex
 #   ENV_FILE                default .env (repo root)
 
 set -euo pipefail
@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 GRAFANA_ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
-GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-deploylens}"
+GRAFANA_ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-kubex}"
 ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
 SA_NAME="deploylens-shell-proxy"
 
