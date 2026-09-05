@@ -5,7 +5,7 @@
         "name": "Deployments",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "enable": true,
         "iconColor": "grey",
@@ -35,7 +35,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
       "datasource": {
         "type": "prometheus",
-        "uid": "deploylens-prometheus"
+        "uid": "kubex-prometheus"
       },
       "targets": [
         {
@@ -63,7 +63,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["deploylens", "reference"],
+  "tags": ["kubex", "reference"],
   "templating": {
     "list": [
       {
@@ -72,7 +72,7 @@
         "type": "query",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "query": "SELECT name FROM services ORDER BY name",
         "refresh": 1,

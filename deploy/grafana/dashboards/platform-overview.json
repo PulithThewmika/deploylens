@@ -16,7 +16,7 @@
       "gridPos": { "h": 6, "w": 6, "x": 0, "y": 0 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -54,7 +54,7 @@
       "gridPos": { "h": 6, "w": 6, "x": 6, "y": 0 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -92,7 +92,7 @@
       "gridPos": { "h": 6, "w": 6, "x": 12, "y": 0 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -132,7 +132,7 @@
       "gridPos": { "h": 6, "w": 6, "x": 18, "y": 0 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -174,7 +174,7 @@
       "gridPos": { "h": 10, "w": 14, "x": 0, "y": 6 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -249,7 +249,7 @@
       "gridPos": { "h": 10, "w": 10, "x": 14, "y": 6 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -293,7 +293,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -338,7 +338,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["deploylens", "platform-overview"],
+  "tags": ["kubex", "platform-overview"],
   "templating": {
     "list": []
   },

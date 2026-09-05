@@ -5,7 +5,7 @@
         "name": "Healthy deploys",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "enable": true,
         "hide": false,
@@ -25,7 +25,7 @@
         "name": "Degraded deploys",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "enable": true,
         "hide": false,
@@ -45,7 +45,7 @@
         "name": "Failed deploys",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "enable": true,
         "hide": false,
@@ -65,7 +65,7 @@
         "name": "Pending assessment",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "enable": true,
         "hide": false,
@@ -96,7 +96,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
       "datasource": {
         "type": "prometheus",
-        "uid": "deploylens-prometheus"
+        "uid": "kubex-prometheus"
       },
       "targets": [
         {
@@ -139,7 +139,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
       "datasource": {
         "type": "prometheus",
-        "uid": "deploylens-prometheus"
+        "uid": "kubex-prometheus"
       },
       "targets": [
         {
@@ -181,7 +181,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "datasource": {
         "type": "prometheus",
-        "uid": "deploylens-prometheus"
+        "uid": "kubex-prometheus"
       },
       "targets": [
         {
@@ -224,7 +224,7 @@
       "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
       "datasource": {
         "type": "grafana-postgresql-datasource",
-        "uid": "deploylens-postgres"
+        "uid": "kubex-postgres"
       },
       "targets": [
         {
@@ -299,7 +299,7 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["deploylens", "deploy-timeline"],
+  "tags": ["kubex", "deploy-timeline"],
   "templating": {
     "list": [
       {
@@ -308,7 +308,7 @@
         "type": "query",
         "datasource": {
           "type": "grafana-postgresql-datasource",
-          "uid": "deploylens-postgres"
+          "uid": "kubex-postgres"
         },
         "query": "SELECT name FROM services ORDER BY name",
         "refresh": 1,
@@ -320,10 +320,10 @@
         "name": "environment",
         "label": "Environment",
         "type": "custom",
-        "query": "deploylens",
-        "current": { "text": "deploylens", "value": "deploylens" },
+        "query": "kubex",
+        "current": { "text": "kubex", "value": "kubex" },
         "options": [
-          { "text": "deploylens", "value": "deploylens", "selected": true }
+          { "text": "kubex", "value": "kubex", "selected": true }
         ]
       }
     ]
