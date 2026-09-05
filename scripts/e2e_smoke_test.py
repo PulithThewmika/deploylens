@@ -113,7 +113,7 @@ def set_error_rate(value: str, sample_app_repo: Path) -> str | None:
         return None
 
     manifest.write_text(updated)
-    run(["git", "add", str(manifest)], cwd=sample_app_repo)
+    run(["git", "add", str(manifest.relative_to(sample_app_repo))], cwd=sample_app_repo)
     run(["git", "commit", "-m", f"chore(e2e): set payments ERROR_RATE={value} for smoke test"], cwd=sample_app_repo)
     run(["git", "push", "origin", "HEAD:dev"], cwd=sample_app_repo)
     return run(["git", "rev-parse", "HEAD"], cwd=sample_app_repo)
@@ -157,7 +157,7 @@ def main() -> int:
     parser.add_argument(
         "--sample-app-repo",
         type=Path,
-        default=Path(os.environ.get("SAMPLE_APP_REPO", DEFAULT_SAMPLE_APP_REPO)),
+        default=Path(os.environ.get("SAMPLE_APP_REPO") or DEFAULT_SAMPLE_APP_REPO),
         help="path to a deploylens-sample-app checkout (default: ../deploylens-sample-app, or $SAMPLE_APP_REPO)",
     )
     parser.add_argument(
