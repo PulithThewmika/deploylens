@@ -56,7 +56,7 @@ class TestResolveService:
     async def test_finds_by_repo(self):
         mock_service = MagicMock(id=42)
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_service
+        mock_result.scalars.return_value.all.return_value = [mock_service]
 
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
@@ -68,7 +68,7 @@ class TestResolveService:
     async def test_finds_by_argocd_app(self):
         mock_service = MagicMock(id=31)
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_service
+        mock_result.scalars.return_value.all.return_value = [mock_service]
 
         session = AsyncMock()
         session.execute = AsyncMock(return_value=mock_result)
@@ -77,8 +77,26 @@ class TestResolveService:
         assert service_id == 31
 
     @pytest.mark.asyncio
+    async def test_finds_oldest_by_repo_when_duplicates_exist(self):
+        """Regression test: a repo-migration seed update (V011) racing an
+        auto-registration can leave two rows sharing the same repo. Since
+        services.repo has no unique constraint, resolve_service must not
+        crash on MultipleResultsFound — it should prefer the oldest row."""
+        older = MagicMock(id=31)
+        newer = MagicMock(id=99)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = [older, newer]
+
+        session = AsyncMock()
+        session.execute = AsyncMock(return_value=mock_result)
+
+        service_id = await resolve_service(session, repo="PulithThewmika/deploylens-sample-app")
+        assert service_id == 31
+
+    @pytest.mark.asyncio
     async def test_auto_registers_unknown_service(self):
         mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
         mock_result.scalar_one_or_none.return_value = None
 
         session = AsyncMock()
@@ -100,7 +118,7 @@ class TestResolveService:
             call_count += 1
             result = MagicMock()
             if call_count == 1:
-                result.scalar_one_or_none.return_value = None
+                result.scalars.return_value.all.return_value = []
             else:
                 result.scalar_one_or_none.return_value = existing
             return result
@@ -118,6 +136,7 @@ class TestResolveService:
         """Regression test for bug #112: when repo last segment != argocd_app,
         two separate resolve_service calls create two rows."""
         mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
         mock_result.scalar_one_or_none.return_value = None
 
         session = AsyncMock()

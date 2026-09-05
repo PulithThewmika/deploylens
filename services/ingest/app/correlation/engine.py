@@ -62,19 +62,36 @@ async def resolve_service(
 ) -> int:
     if repo:
         result = await session.execute(
-            select(Service).where(Service.repo == repo)
+            select(Service).where(Service.repo == repo).order_by(Service.id)
         )
-        service = result.scalar_one_or_none()
-        if service is not None:
-            return service.id
+        services = result.scalars().all()
+        if services:
+            if len(services) > 1:
+                # No unique constraint on repo, so a repo-migration seed
+                # update (see V011) racing an auto-registration can leave two
+                # rows pointing at the same repo. Prefer the oldest rather
+                # than crash the webhook on this - manual reconciliation
+                # (merge/delete the newer row) is still needed.
+                logger.warning(
+                    "Multiple services share repo='%s' (ids=%s) — using oldest (id=%d); "
+                    "manual reconciliation needed",
+                    repo, [s.id for s in services], services[0].id,
+                )
+            return services[0].id
 
     if argocd_app:
         result = await session.execute(
-            select(Service).where(Service.argocd_app == argocd_app)
+            select(Service).where(Service.argocd_app == argocd_app).order_by(Service.id)
         )
-        service = result.scalar_one_or_none()
-        if service is not None:
-            return service.id
+        services = result.scalars().all()
+        if services:
+            if len(services) > 1:
+                logger.warning(
+                    "Multiple services share argocd_app='%s' (ids=%s) — using oldest (id=%d); "
+                    "manual reconciliation needed",
+                    argocd_app, [s.id for s in services], services[0].id,
+                )
+            return services[0].id
 
     name = (
         repo.split("/")[-1] if repo
