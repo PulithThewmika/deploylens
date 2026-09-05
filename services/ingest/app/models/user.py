@@ -24,4 +24,6 @@ class User(Base):
     avatar_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
 
-    memberships: Mapped[list[OrgMembership]] = relationship(back_populates="user")
+    memberships: Mapped[list[OrgMembership]] = relationship(
+        back_populates="user", cascade="all, delete", passive_deletes=True
+    )

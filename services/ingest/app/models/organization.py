@@ -24,5 +24,9 @@ class Organization(Base):
     slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
 
-    memberships: Mapped[list[OrgMembership]] = relationship(back_populates="organization")
-    api_keys: Mapped[list[ApiKey]] = relationship(back_populates="organization")
+    memberships: Mapped[list[OrgMembership]] = relationship(
+        back_populates="organization", cascade="all, delete", passive_deletes=True
+    )
+    api_keys: Mapped[list[ApiKey]] = relationship(
+        back_populates="organization", cascade="all, delete", passive_deletes=True
+    )
