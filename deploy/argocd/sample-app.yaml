@@ -10,9 +10,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/PulithThewmika/deploylens.git
+    repoURL: https://github.com/PulithThewmika/deploylens-sample-app.git
     targetRevision: dev
-    path: sample-app/deploy
+    path: deploy
     directory:
       recurse: true
   destination:
