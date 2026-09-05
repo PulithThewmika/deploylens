@@ -95,11 +95,15 @@ def run(cmd: list[str], cwd: Path) -> str:
     return result.stdout.strip()
 
 
-def set_error_rate(value: str, sample_app_repo: Path) -> str | None:
+def set_error_rate(value: str, sample_app_repo: Path) -> tuple[bool, str | None]:
     """Rewrite ERROR_RATE in the payments deployment manifest and push it.
 
-    Returns the new commit SHA, or None if the value was already set (so
-    there was nothing to commit).
+    Returns (mutated, commit_sha). `mutated` is True as soon as the manifest
+    is written to disk — even if the subsequent commit/push fails — so the
+    caller can still attempt cleanup on a partial failure instead of leaving
+    the checkout dirty. `commit_sha` is only set once the push succeeds;
+    when ERROR_RATE already matched `value`, mutated is False and nothing
+    was written, committed, or pushed.
     """
     manifest = sample_app_repo / "deploy" / "payments" / "deployment.yaml"
     original = manifest.read_text()
@@ -110,13 +114,13 @@ def set_error_rate(value: str, sample_app_repo: Path) -> str | None:
         )
     if updated == original:
         log(f"ERROR_RATE already {value!r} — nothing to commit")
-        return None
+        return False, None
 
     manifest.write_text(updated)
     run(["git", "add", str(manifest.relative_to(sample_app_repo))], cwd=sample_app_repo)
     run(["git", "commit", "-m", f"chore(e2e): set payments ERROR_RATE={value} for smoke test"], cwd=sample_app_repo)
     run(["git", "push", "origin", "HEAD:dev"], cwd=sample_app_repo)
-    return run(["git", "rev-parse", "HEAD"], cwd=sample_app_repo)
+    return True, run(["git", "rev-parse", "HEAD"], cwd=sample_app_repo)
 
 
 def poll(description: str, timeout_s: int, interval_s: int, check):
@@ -193,11 +197,15 @@ def main() -> int:
     baseline_id = baseline[0]["id"] if baseline else 0
     log(f"baseline: latest {SERVICE} deployment id = {baseline_id}")
 
-    pushed_sha = None
+    mutated = False
     try:
         if not args.skip_trigger:
             log(f"Step 1/4: pushing ERROR_RATE=0.3 to {args.sample_app_repo}/deploy/payments/deployment.yaml")
-            pushed_sha = set_error_rate("0.3", args.sample_app_repo)
+            mutated, pushed_sha = set_error_rate("0.3", args.sample_app_repo)
+            if not mutated:
+                log("FAIL — ERROR_RATE was already 0.3 (a prior run's cleanup likely failed); "
+                    "reset it manually or rerun with --skip-trigger to poll an already-triggered deploy")
+                return 1
             log(f"pushed {pushed_sha}")
             nudge_argocd_refresh()
         else:
@@ -247,7 +255,7 @@ def main() -> int:
         return 1
 
     finally:
-        if pushed_sha and not args.skip_cleanup:
+        if mutated and not args.skip_cleanup:
             log("cleanup: reverting ERROR_RATE back to 0")
             try:
                 set_error_rate("0", args.sample_app_repo)
