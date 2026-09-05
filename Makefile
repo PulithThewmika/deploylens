@@ -2,7 +2,7 @@
         forwards forwards-stop argocd-forward tunnel webhook-update e2e
 
 help:
-	@echo "DeployLens dev workflow targets:"
+	@echo "KubeX dev workflow targets:"
 	@echo "  cluster-up       Create the Kind cluster from deploy/kind-config.yaml"
 	@echo "  cluster-down     Delete the Kind cluster"
 	@echo "  cluster-status   Show cluster info and node list"
@@ -44,7 +44,7 @@ db-shell:
 
 # --- Migrations ---
 migrate:
-	python services/ingest/migrations/run.py --url "postgresql://kubex:kubex@localhost:5432/kubex"
+	python services/ingest/migrations/run.py --url "postgresql://kubex:$${POSTGRES_PASSWORD:-kubex}@localhost:5432/kubex"
 
 # --- Cluster Port-Forwards (background, PIDs tracked in .pids) ---
 forwards:
