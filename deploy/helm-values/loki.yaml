@@ -1,11 +1,11 @@
-# Helm values for Loki in the DeployLens Kind cluster.
+# Helm values for Loki in the KubeX Kind cluster.
 # Install:
 #   helm install loki grafana/loki \
 #     -n monitoring \
 #     -f deploy/helm-values/loki.yaml
 #
 # SingleBinary mode — lightweight, no object storage required.
-# Auth disabled — DeployLens services query Loki directly.
+# Auth disabled — KubeX services query Loki directly.
 
 # ── Deployment mode ─────────────────────────────────────────────────
 deploymentMode: SingleBinary

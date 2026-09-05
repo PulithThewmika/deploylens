@@ -1,4 +1,4 @@
-# Helm values for Fluent-Bit in the DeployLens Kind cluster.
+# Helm values for Fluent-Bit in the KubeX Kind cluster.
 # Install:
 #   helm install fluent-bit fluent/fluent-bit \
 #     -n monitoring \
